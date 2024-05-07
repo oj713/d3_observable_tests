@@ -5,14 +5,22 @@ import NotesBox from './notesbox.js';
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<h1>Home</h1>} />
-          <Route path="/notesbox" element={<NotesBox/>} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <div className="App container-fluid">
+        <div className="jasper sidebar nopad">
+          <ul className = "list-group list-group-flush">
+            <a href = "/" className = "list-group-item"> Home </a>
+            <a href = "/notesbox" className = "list-group-item"> Notes </a>
+          </ul>
+        </div>
+        <div className="bump_left">
+          <Routes>
+            <Route path="/" element={<h1>Home</h1>} />
+            <Route path="/notesbox" element={<NotesBox/>} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
   );
 }
 

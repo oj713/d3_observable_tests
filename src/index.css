@@ -1,9 +1,20 @@
 :root {
   --jasper: #dd614aff;
+  --darkjasper: rgb(118, 35, 35);
   --coral: #f48668ff;
   --melon: #f4a698ff;
   --sage: #c5c392ff;
   --cambridge-blue: #73a580ff;
+
+  --sidebar-width: 200px;
+}
+
+.jasper {
+  background-color: var(--jasper);
+}
+
+.coral {
+  background-color: var(--coral);
 }
 
 body {
@@ -13,9 +24,44 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  box-sizing:border-box;
+}
+*, 
+*::before,
+*::after {
+  box-sizing: inherit;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  position:fixed;
+  left: 0;
+  bottom:0;
+  top:0;
+  z-index: 1000;
+  display:block;
+}
+
+.sidebar .list-group-item {
+  background-color: transparent;
+  border: var(--darkjasper) 1px solid;
+  border-width: 1px 0px;
+  font-weight: bold;
+}
+.sidebar .list-group-item:hover {
+  background-color: var(--darkjasper);
+}
+
+.sidebar a, a:hover {
+  color: white;
+  text-decoration: none;
+}
+
+.bump_left {
+  margin-left: var(--sidebar-width);
 }

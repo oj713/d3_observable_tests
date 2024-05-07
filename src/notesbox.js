@@ -55,6 +55,7 @@ return (
     <div>
         <h1>D3 and Observable Libraries</h1>
         <a href = "https://observablehq.com/plot/getting-started"> Getting started with Observable </a>
+
         <h2>Observable</h2>
         
         <p><b>Server Side Rendering</b>: Minimizes distracting reflow for better user experience, but only practical for small plots</p>
