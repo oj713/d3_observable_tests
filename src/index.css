@@ -1,3 +1,11 @@
+:root {
+  --jasper: #dd614aff;
+  --coral: #f48668ff;
+  --melon: #f4a698ff;
+  --sage: #c5c392ff;
+  --cambridge-blue: #73a580ff;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
