@@ -1,0 +1,27 @@
+.sidebar {
+  width: var(--sidebar-width);
+  position:fixed;
+  left: 0;
+  bottom:0;
+  top:0;
+  z-index: 1000;
+  display:block;
+}
+
+.sidebar .list-group-item {
+  background-color: transparent;
+  border:none;
+  font-weight: bold;
+}
+.sidebar .list-group-item:hover {
+  background-color: var(--darkjasper);
+}
+
+.sidebar .list-group-item.active {
+  background-color: var(--cambridge-blue);
+}
+
+.sidebar a, a:hover {
+  color: white;
+  text-decoration: none;
+}
