@@ -1,5 +1,3 @@
 # D3 and Observable Tests
 
-Libraries: 
-* `react-code-blocks`
-* Bootstrap
+Run the application using `npm start`

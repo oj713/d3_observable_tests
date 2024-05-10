@@ -6,8 +6,8 @@ const NavSidebar = () => {
     let active = pathname.split("/")[1];
 
     const tabs = [
-        {name: "Home", path: ""},
-        {name: "Notes", path: "notesbox"}
+        {name: "Notes", path: ""},
+        {name: "Scatterplots", path: "scatterplots"}
     ]
 
     return (

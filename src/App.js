@@ -2,7 +2,8 @@ import './App.css';
 import {BrowserRouter} from 'react-router-dom';
 import {Routes, Route} from 'react-router';
 import NotesBox from './notesbox.js';
-import NavSidebar from './nav/nav_sidebar.js';
+import NavSidebar from './nav';
+import ScatterplotsPage from './scatterplots';
 
 function App() {
   return (
@@ -11,8 +12,8 @@ function App() {
         <NavSidebar/>
         <div className="bump_left">
           <Routes>
-            <Route path="/" element={<h1>Home</h1>} />
-            <Route path="/notesbox" element={<NotesBox/>} />
+            <Route path="/" element={<NotesBox/>} />
+            <Route path="/scatterplots" element={<ScatterplotsPage/>} />
           </Routes>
         </div>
       </div>
