@@ -3,7 +3,7 @@ import {BrowserRouter} from 'react-router-dom';
 import {Routes, Route} from 'react-router';
 import NotesBox from './notesbox.js';
 import NavSidebar from './nav';
-import ScatterplotsPage from './scatterplots';
+import GeneralPage from './plots/general.js';
 
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
         <div className="bump_left">
           <Routes>
             <Route path="/" element={<NotesBox/>} />
-            <Route path="/scatterplots" element={<ScatterplotsPage/>} />
+            <Route path="/general" element={<GeneralPage/>} />
           </Routes>
         </div>
       </div>

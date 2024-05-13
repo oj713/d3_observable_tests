@@ -21,7 +21,7 @@
   background-color: var(--cambridge-blue);
 }
 
-.sidebar a, a:hover {
+.sidebar a, .sidebar a:hover {
   color: white;
   text-decoration: none;
 }

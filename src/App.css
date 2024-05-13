@@ -18,5 +18,11 @@ h1, h2, h3 {
 }
 
 a {
-  color: var(--cambridge-blue)
+  color: var(--cambridge-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--darker-blue);
+  text-decoration: none;
 }

@@ -7,14 +7,15 @@ const NavSidebar = () => {
 
     const tabs = [
         {name: "Notes", path: ""},
-        {name: "Scatterplots", path: "scatterplots"}
+        {name: "General", path: "general"}
     ]
 
     return (
     <div className = "jasper sidebar nopad">
         <ul className = "list-group list-group-flush">
             {tabs.map(tab => 
-                <a href = {`/${tab.path}`} className = {`${active === tab.path ? "active" : ""} list-group-item`}> {tab.name} </a>)}
+                <a href = {`/${tab.path}`} key = {tab.path} 
+                className = {`${active === tab.path ? "active" : ""} list-group-item`}> {tab.name} </a>)}
         </ul>
     </div>
     )
