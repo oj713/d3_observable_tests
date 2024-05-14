@@ -8,6 +8,13 @@
   display:block;
 }
 
+/* will fix this later */
+@media (max-width: 600px) {
+  .sidebar {
+    display:none;
+  }
+}
+
 .sidebar .list-group-item {
   background-color: transparent;
   border:none;

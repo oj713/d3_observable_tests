@@ -28,7 +28,8 @@ const LetterExample = () => {
           y: "frequency", 
           sort: sort === "Alphabetical" ? null : {x: "y", reverse: sort.startsWith("Desc")},
           fill: "url(#gradient)",
-          fillOpacity: 1
+          fillOpacity: 1,
+          tip: true
         }),
         Plot.ruleY([0])
       ],

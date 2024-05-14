@@ -7,11 +7,12 @@ const NavSidebar = () => {
 
     const tabs = [
         {name: "Notes", path: ""},
-        {name: "General", path: "general"}
+        {name: "General", path: "general"},
+        {name: "Networks w/ Obs", path: "networksobs"}
     ]
 
     return (
-    <div className = "jasper sidebar nopad">
+    <div className = "jasper col sidebar nopad">
         <ul className = "list-group list-group-flush">
             {tabs.map(tab => 
                 <a href = {`/${tab.path}`} key = {tab.path} 

@@ -37,11 +37,22 @@ body {
   box-sizing: inherit;
 }
 
+p {
+  margin-bottom: 0px;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
 
-.bump_left {
+.bump-left {
   margin-left: var(--sidebar-width);
+}
+
+/* will fix this later */
+@media (max-width: 600px) {
+  .bump-left {
+    margin-left: 0;
+  }
 }
