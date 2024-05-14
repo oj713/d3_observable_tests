@@ -1,0 +1,10 @@
+.forceVerticalScroll {
+    overflow-y: auto;
+    display: block;
+    max-height: 300px;
+}
+
+.table .thead-dark th {
+    background-color: var(--cambridge-blue);
+    border-color: var(--cambridge-blue);
+}

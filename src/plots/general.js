@@ -1,6 +1,7 @@
 import * as Plot from "@observablehq/plot";
 import {useEffect, useRef, useState} from "react";
 import PlotFigure from "./plotFigure.js";
+import CSVTable from "../dataPresentation";
 import {letterData} from "./exampleData.js";
 import {svg} from "htl";
 import Papa from "papaparse";
@@ -66,17 +67,17 @@ const BreadHeatmap = ({breadData}) => {
   const breadDataRef = useRef();
 
   useEffect(() => {
-    console.log("BreadHeatmap bread Data", breadData);
+    console.log("Breaddata has changed");
     if (breadData) {
       const breadHeatmap = Plot.plot({
         width: 800,
-        marginBottom: 100,
-        marginLeft: 75,
-        color: {label: "Count", legend: true, scheme: "turbo"},
-        x: {label: "Item", tickRotate: -90},
+        marginBottom: 30,
+        marginLeft: 60,
+        aspectRatio: 1,
+        color: {label: "Count", legend: true, scheme: "viridis"},
+
         marks: [
-          Plot.frame(),
-          Plot.cell(breadData, Plot.group({fill: "count"}, {x: "period_day", y: "Item"}))
+          Plot.cell(breadData, Plot.group({fill: "count"}, {x: "period_day", y: "weekday_weekend"})),
         ]
       })
       breadDataRef.current.append(breadHeatmap);
@@ -87,12 +88,15 @@ const BreadHeatmap = ({breadData}) => {
 
   return (
     <div>
-      <b>Bread Heatmap</b> - <a href = "https://www.kaggle.com/datasets/mittalvasu95/the-bread-basket?resource=download"> data source </a>
+      <h3>Bread Heatmap</h3>
+      <p> Data &#40;<a href = "https://www.kaggle.com/datasets/mittalvasu95/the-bread-basket?resource=download"> source </a>&#41;</p>
+      <CSVTable data = {breadData} numRows = {100}/>
+      <br/>
+      <h4>Heatmap of Results</h4>
       <div ref = {breadDataRef}></div>
     </div>
   )
 }
-
 const GeneralPage = () => {
   const framedTextRef = useRef();
   const [breadData, setBreadData] = useState();
@@ -105,10 +109,11 @@ const GeneralPage = () => {
     .then( responseText => {
         // -- parse csv
         const parsedData = Papa.parse(responseText, {header: true}).data;
-        // to do : filter out the "null" row
-        setBreadData(parsedData.filter(row => row !== ""));
+        // remove the last row, which is empty
+        parsedData.pop();
+        setBreadData(parsedData);
     });
-  })
+  }, [])
 
   //client side rendering on page load
   useEffect(() => {
@@ -148,6 +153,8 @@ const GeneralPage = () => {
 
       <LetterExample/>
 
+      <hr/>
+      
       <BreadHeatmap breadData = {breadData}/>
 
   </div>
