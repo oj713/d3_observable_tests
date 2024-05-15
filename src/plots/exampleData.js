@@ -26,3 +26,39 @@ export const letterData = [
     { letter: "y", frequency: 0.01974 },
     { letter: "z", frequency: 0.00074 }
   ];
+
+  export const riverNodesData = [
+    {id: "freshwater river", name: "Freshwater River", group: "river", layer: 6},
+    {id: "geothermally heated river", name: "Geothermal Heated River", group: "river", layer: 6},
+    {id: "underground river", name: "Underground River", group: "river", layer: 6},
+    {id: "tidal creek", name: "Tidal Creek", group: "creek", layer: 5},
+    {id: "river", name: "River", group: "river", layer: 5},
+    {id: "underground stream", name: "Underground Stream", group: "stream", layer: 5},
+    {id: "tidal watercourse", name: "Tidal Watercourse", group: "watercourse", layer: 4},
+    {id: "stream", name: "Stream", group: "stream", layer: 4},
+    {id: "hypoxic lake", name: "Hypoxic Lake", group: "lake", layer: 4},
+    {id: "watercourse", name: "Watercourse", group: "watercourse", layer: 3},
+    {id: "lake", name: "Lake", group: "lake", layer: 3},
+    {id: "lotic water body", name: "Lotic Water Body", group: "water body", layer: 2},
+    {id: "lentic water body", name: "Lentic Water Body", group: "water body", layer: 2},
+    {id: "underground water body", name: "Underground Water Body", group: "water body", layer: 2},
+    {id: "water body", name: "Water Body", group: "water body", layer: 1}
+  ]
+  export const riverLinksData = [
+    ["freshwater river","river"],
+    ["geothermally heated river","river"],
+    ["underground river","underground stream"],
+    ["underground river","river"],
+    ["tidal creek","tidal watercourse"],
+    ["river","stream"],
+    ["underground stream","stream"],
+    ["underground stream","underground water body"],
+    ["tidal watercourse","watercourse"],
+    ["stream","watercourse"],
+    ["hypoxic lake","lake"],
+    ["watercourse","lotic water body"],
+    ["lake","lentic water body"],
+    ["lotic water body","water body"],
+    ["underground water body","water body"],
+    ["lentic water body","water body"]
+]

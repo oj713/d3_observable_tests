@@ -1,6 +1,8 @@
 import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 import PlotFigure from "./plotFigure.js";
+import {riverNodesData, riverLinksData} from "./exampleData.js";
+import {useRef, useEffect} from "react";
 
 const SimpleNodesArrows = () => {
     const matrix = [[3, 2, 5], [1, 7, 2], [1, 1, 8]]
@@ -53,7 +55,130 @@ const SimpleNodesArrows = () => {
     )
 }
 
+// assumes id, name, group, layer for nodes
+// assumes source, target for links
+const ForceDAG = ({nodesData, linksData}) => {
+    const dagRef = useRef();
+
+    const width = 800
+    const height = 500
+
+    // Color scale
+    // scaleOrdinal -- discrete. https://d3js.org/d3-scale-chromatic/categorical
+    const color = d3.scaleOrdinal(d3.schemeObservable10);
+
+    // ---------- FORCING SIMULATION ----------
+
+    // force simulation mutates this data, so create a copy
+    //const links = nodesData.map(d => ({...d}))
+    //const nodes = linksData.map(d => ({...d}))
+
+    // end of the simulation function -- update node positions
+    // we need this function because otherwise the nodes won't update
+    const ticked = () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+        text
+            .attr("x", d => d.x + 15)
+            .attr("y", d => d.y + 5);
+    }
+
+    // creating a D3 simulation and adding "forces"
+    const simulation = d3.forceSimulation(nodesData)
+        .force("link", d3.forceLink() // force that adds links to nodes
+                            .id(d => d.id) // function to retrieve ID for a node
+                            .links(linksData)) // adding links 
+        .force("charge", d3.forceManyBody().strength(-150)) // force that adds repulsion between nodes
+        .force("center", d3.forceCenter(width/2, height/2)) // force that adds centering force
+        .force("y", d3.forceY(d => d.layer * 80).strength(.25)) // y axis positioning based on layer
+        .on("end", ticked) // event listener for the end of the simulation
+
+    // ---------- SVG CREATION ----------
+
+    // initializing the SVG object
+    const svg = d3.create('svg')
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", [0, 0, width, height])
+        .attr("style", "max-width: 100%; height: auto;")
+        .style("border", "black solid 1px")
+    
+        /* Old code
+    In this approach, you're directly selecting all existing line elements within the SVG, binding data to them, 
+    entering the data join, and appending new line elements for any new data points. 
+    var link = svg
+    .selectAll("line") // select all lines
+    .data(linksData)
+    .enter() // create placeholder for each data point
+    .append("line")
+      .style("stroke", "var(--darker-blue)")
+
+    // Initialize the nodes
+    var node = svg
+    .selectAll("circle")
+    .data(nodesData)
+    .enter()
+    .append("circle")
+      .attr("r", 10)
+      .style("fill", "var(--melon)")
+
+    */
+
+    /* In this approach, you're creating a new g element within the SVG and setting its stroke attribute. 
+    Then, you're binding data to this g element, entering the data join, and appending line elements within this g element for each data point. */
+    const link = svg.append("g")
+        .attr("stroke", "var(--darker-blue")
+    .selectAll()
+    .data(linksData)
+    .join("line")
+        //.attr("stroke-width", d => Math.sqrt(d.value)) // for width by importance?
+
+    // Initialize the nodes
+    const node = svg.append("g")
+    .selectAll()
+    .data(nodesData)
+    .join("circle")
+      .attr("r", 10)
+      .attr("fill", d => color(d.group))
+    
+    node.append("title") //tooltip
+        .text(d => d.name)
+
+    // adding Text
+    const text = svg.append("g")
+        .attr("font-size", "10")
+    .selectAll()
+    .data(nodesData)
+    .join("text")
+        .text(d => d.name)
+
+    // -------- APPENDING TO DOM --------
+
+    useEffect(() => {
+        dagRef.current.appendChild(svg.node())
+        return () => svg.node().remove()
+    }, [])
+
+    return (
+        <div>
+        <h3> Directed Acyclic Graph </h3>
+        <p> Using D3. Manually input layering. <a href = "https://observablehq.com/@jeffbaumes/ontology-directed-acyclic-graph-simplification">DAG draggable</a>, 
+        <a href = "https://d3-graph-gallery.com/graph/network_basic.html">Basic D3 Network</a></p>
+        <p>Potentially worth later exploration -- <a href = 'https://github.com/erikbrinkman/d3-dag'>Sugiyama layout package</a></p>
+        <div ref = {dagRef}></div>
+        </div>
+    )
+}
+
 export default function NetworksObs() {
+    const links = riverLinksData.map(([src, tar]) => ({source: src, target: tar}))
+
     return (
         <div>
             <h2>Visualizing Networks with Observable</h2>
@@ -62,6 +187,11 @@ export default function NetworksObs() {
             <p> Node size and Link size are weighted by importance. <a href = "https://observablehq.com/@observablehq/plot-finite-state-machine?intent=fork">source</a> </p>
             <code>const matrix = [[3, 2, 5], [1, 7, 2], [1, 1, 8]]</code>
             <SimpleNodesArrows/>
+
+            <hr/>
+            <ForceDAG nodesData = {riverNodesData} linksData = {links}/>
         </div>
+
+
     )
 }
