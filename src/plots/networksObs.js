@@ -2,7 +2,7 @@ import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 import PlotFigure from "./plotFigure.js";
 import {riverNodesData, riverLinksData} from "./exampleData.js";
-import {useRef, useEffect} from "react";
+import {useRef, useEffect, useState} from "react";
 
 const SimpleNodesArrows = () => {
     const matrix = [[3, 2, 5], [1, 7, 2], [1, 1, 8]]
@@ -59,6 +59,7 @@ const SimpleNodesArrows = () => {
 // assumes source, target for links
 const ForceDAG = ({nodesData, linksData}) => {
     const dagRef = useRef();
+    const [isDynamic, setIsDynamic] = useState(true)
 
     const width = 800
     const height = 500
@@ -97,7 +98,8 @@ const ForceDAG = ({nodesData, linksData}) => {
         .force("charge", d3.forceManyBody().strength(-150)) // force that adds repulsion between nodes
         .force("center", d3.forceCenter(width/2, height/2)) // force that adds centering force
         .force("y", d3.forceY(d => d.layer * 80).strength(.25)) // y axis positioning based on layer
-        .on("end", ticked) // event listener for the end of the simulation
+        //.on("end", ticked) // event listener for the end of the simulation
+        .on("tick", ticked) // event listener for each tick of the simulation
 
     // ---------- SVG CREATION ----------
 
@@ -109,7 +111,7 @@ const ForceDAG = ({nodesData, linksData}) => {
         .attr("style", "max-width: 100%; height: auto;")
         .style("border", "black solid 1px")
     
-        /* Old code
+    /* Old code
     In this approach, you're directly selecting all existing line elements within the SVG, binding data to them, 
     entering the data join, and appending new line elements for any new data points. 
     var link = svg
@@ -158,6 +160,31 @@ const ForceDAG = ({nodesData, linksData}) => {
     .join("text")
         .text(d => d.name)
 
+    // -------- DRAGGING --------
+    // reheat simulation when drag starts, fix subject position
+    const dragstarted = (event) => {
+        // alphaTarget is the cooling parameter.
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+    // update subject position during drag
+    function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+    }
+    // restore target alpha so simulation cools after dragging, unfix subject position
+    const dragended = (event) => {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
+
+    node.call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended))
+
     // -------- APPENDING TO DOM --------
 
     useEffect(() => {
@@ -168,9 +195,18 @@ const ForceDAG = ({nodesData, linksData}) => {
     return (
         <div>
         <h3> Directed Acyclic Graph </h3>
-        <p> Using D3. Manually input layering. <a href = "https://observablehq.com/@jeffbaumes/ontology-directed-acyclic-graph-simplification">DAG draggable</a>, 
-        <a href = "https://d3-graph-gallery.com/graph/network_basic.html">Basic D3 Network</a></p>
-        <p>Potentially worth later exploration -- <a href = 'https://github.com/erikbrinkman/d3-dag'>Sugiyama layout package</a></p>
+        <p> Using D3. Manual input layering. References: </p>
+        <ul>
+            <li><a href = "https://observablehq.com/@jeffbaumes/ontology-directed-acyclic-graph-simplification">DAG draggable</a></li>
+            <li><a href = "https://observablehq.com/@d3/force-directed-graph">Force Directed Graph</a></li>
+            <li><a href = "https://d3-graph-gallery.com/graph/network_basic.html">Basic D3 Network</a></li>
+            <li><a href = 'https://github.com/erikbrinkman/d3-dag'>Sugiyama layout package</a>, for later exploration</li>
+        </ul>
+        <div className = "form-switch form-check">
+            <input className ="form-check-input" type = "checkbox" role = "switch" id = "dynamic"
+                checked = {isDynamic} onChange = {() => setIsDynamic(!isDynamic)}/>
+            <label className = "form-check-label" for = "dynamic"> Dynamic Graph? </label>
+        </div>
         <div ref = {dagRef}></div>
         </div>
     )
