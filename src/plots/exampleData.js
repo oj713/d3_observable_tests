@@ -30,10 +30,10 @@ export const letterData = [
   export const riverNodesData = [
     {id: "freshwater river", name: "Freshwater River", group: "river", layer: 6},
     {id: "geothermally heated river", name: "Geothermal Heated River", group: "river", layer: 6},
-    {id: "underground river", name: "Underground River", group: "river", layer: 6},
+    {id: "underground river", name: "Underground River", group: "river", layer: 4},
     {id: "tidal creek", name: "Tidal Creek", group: "creek", layer: 5},
     {id: "river", name: "River", group: "river", layer: 5},
-    {id: "underground stream", name: "Underground Stream", group: "stream", layer: 5},
+    {id: "underground stream", name: "Underground Stream", group: "stream", layer: 3},
     {id: "tidal watercourse", name: "Tidal Watercourse", group: "watercourse", layer: 4},
     {id: "stream", name: "Stream", group: "stream", layer: 4},
     {id: "hypoxic lake", name: "Hypoxic Lake", group: "lake", layer: 4},
