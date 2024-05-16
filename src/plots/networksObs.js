@@ -105,7 +105,9 @@ const ForceDAG = ({nodesData, linksData}) => {
     if (isDynamic) {
         simulation.on("tick", ticked)
     } else {
-        simulation.on("end", () => {
+        simulation
+        .alphaMin(.1)
+        .on("end", () => {
             svg.select("#loading-text").remove() // removing loading text
             appendGraph() // adding graph elements to svg
             ticked() // updating positions
@@ -247,6 +249,157 @@ const ForceDAG = ({nodesData, linksData}) => {
     )
 }
 
+const CollapsibleTree = () => {
+    const collapsibleTreeRef = useRef();
+
+    // dims. adjustable height
+    const width = 800
+    const marginLR = 40
+    const marginTB = 20
+
+    // using d3.hierarchy to create a "root node"
+    // data import not working 
+    const root = d3.hierarchy("https://observablehq.com/@d3/collapsible-tree#data");
+    console.log(root)
+    const dx = 10; // rows are separated by dx pixels (a height)
+    const dy = width - 2*marginLR / (root.height + 1) // space between columns
+
+    // tree layout, shape for links
+    const tree = d3.tree().nodeSize([dx, dy])
+    const diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x) // horizontal layout
+
+    // creating SVG container
+    const svg = d3.create("svg")
+        .attr("width", width)
+        .attr("height", dx)
+        .attr("viewBox", [-marginLR, -marginTB, width, dx])
+        .attr("style", "font: 10px sans-serif; user-select: none;")
+        .style("border", "black solid 1px")
+
+    const gLink = svg.append("g")
+        .attr("fill", "none")
+        .attr("stroke", "var(--darker-blue)")
+        .attr("stroke-opacity", 0.4)
+        .attr("stroke-width", 1.5)
+    
+    const gNode = svg.append("g")
+        .attr("cursor", "pointer") // pointer cursor
+        .attr("pointer-events", "all") // allow events on all children
+    
+    function update(event, source) {
+        const duration = event?.altkey ? 2500 : 250 //slow down when alt key is pressed
+        const nodes = root.descendants().reverse() // reverse to draw leaves on top of parents
+        const links = root.links() 
+
+        tree(root); //compute tree layout
+
+        let left = root;
+        let right = root;
+        // find leftmost and rightmost nodes
+        root.eachBefore(node => { // eachBefore visits each node such that node is only visited after its descendants
+            if (node.x < left.x) left = node;
+            if (node.x > right.x) right = node;
+        })
+
+        const height = right.x - left.x + 2*marginTB
+
+        const transition = svg.transition()
+            .duration(duration)
+            .attr("height", height)
+            .attr("viewBox", [-marginLR, left.x - marginTB, width, height])
+            .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
+        
+        // Update nodes
+        const node = gNode.selectAll("g")
+            .data(nodes, d => d.id)
+
+        // enter new nodes at parent's prior position
+        const nodeEnter = node.enter().append("g")
+            .attr("transform", d => `translate(${source.y0},${source.x0})`)
+            .attr("fill-opacity", 0)
+            .attr("stroke-opacity", 0)
+            .on("click", (event, d) => {
+                d.children = d.children ? null : d._children;
+                update(event, d)
+            })
+        
+        nodeEnter.append("circle")
+            .attr("r", 3)
+            .attr("fill", d => d._children ? "var(--melon)" : "white")
+            .attr("stroke-width", 10);
+
+        // no text for now
+
+        const nodeUpdate = node.merge(nodeEnter).transition(transition)
+            .attr("transform", d => `translate(${d.y},${d.x})`)
+            .attr("fill-opacity", 1)
+            .attr("stroke-opacity", 1)
+
+        // Transition exiting nodes to the parent's new position.
+        const nodeExit = node.exit().transition(transition).remove()
+            .attr("transform", d => `translate(${source.y},${source.x})`)
+            .attr("fill-opacity", 0)
+            .attr("stroke-opacity", 0);
+
+        // Update the links…
+        const link = gLink.selectAll("path")
+          .data(links, d => d.target.id);
+
+        // Enter any new links at the parent's previous position.
+        const linkEnter = link.enter().append("path")
+            .attr("d", d => {
+              const o = {x: source.x0, y: source.y0};
+              return diagonal({source: o, target: o});
+            });
+
+        // Transition links to their new position.
+        link.merge(linkEnter).transition(transition)
+            .attr("d", diagonal);
+
+        // Transition exiting nodes to the parent's new position.
+        link.exit().transition(transition).remove()
+            .attr("d", d => {
+              const o = {x: source.x, y: source.y};
+              return diagonal({source: o, target: o});
+            });
+
+        // Stash the old positions for transition.
+        root.eachBefore(d => {
+          d.x0 = d.x;
+          d.y0 = d.y;
+        });
+    }
+
+    // Do the first update to the initial configuration of the tree — where a number of nodes
+    // are open (arbitrarily selected as the root, plus nodes with 7 letters).
+    root.x0 = dy / 2;
+    root.y0 = 0;
+    root.descendants().forEach((d, i) => {
+      d.id = i;
+      d._children = d.children;
+      if (d.depth && d.data.name.length !== 7) d.children = null;
+    });
+
+    update(null, root);
+
+    useEffect(() => {
+        collapsibleTreeRef.current.appendChild(svg.node())
+        return () => svg.node().remove()
+    }, [svg])
+
+    return (
+        <div>
+            <h3>Collapsible Tree</h3>
+            <p>Click on nodes to hide/reveal layers.</p>
+            <ul>
+                <li><a href = "https://observablehq.com/@d3/collapsible-tree">Data source</a></li>
+                <li><a href = "https://observablehq.com/@observablehq/plot-tree-tidy?intent=fork">Static Tree with Observable</a></li>
+            </ul>
+            <div ref = {collapsibleTreeRef}></div>
+        </div>
+    )
+}
+
 export default function NetworksObs() {
     const links = riverLinksData.map(([src, tar]) => ({source: src, target: tar}))
 
@@ -261,6 +414,9 @@ export default function NetworksObs() {
 
             <hr/>
             <ForceDAG nodesData = {riverNodesData} linksData = {links}/>
+
+            <hr/>
+            <CollapsibleTree />
         </div>
 
 
