@@ -14,8 +14,6 @@ const SimpleNodesArrows = () => {
     // edges are specified by three values -- connected nodes & value. [[x1, y1], [x2, y2], value]
     const edges = matrix.flatMap((m, i) => m.map((value, j) => ([nodes[i][0], nodes[j][0], value])))
 
-    console.log(nodes.map(n => n[0]))
-
     return (
     <PlotFigure options = {{
         inset: 60,
@@ -57,6 +55,7 @@ const SimpleNodesArrows = () => {
 
 // assumes id, name, group, layer for nodes
 // assumes source, target for links
+// Idea: force freeze for static rather than rerunning simulation.
 const ForceDAG = ({nodesData, linksData}) => {
     const dagRef = useRef();
     const [isDynamic, setIsDynamic] = useState(false)
@@ -249,7 +248,7 @@ const ForceDAG = ({nodesData, linksData}) => {
     )
 }
 
-const CollapsibleTree = () => {
+const CollapsibleTree = ({treeData}) => {
     const collapsibleTreeRef = useRef();
 
     // dims. adjustable height
@@ -258,14 +257,16 @@ const CollapsibleTree = () => {
     const marginTB = 20
 
     // using d3.hierarchy to create a "root node"
-    // data import not working 
-    const root = d3.hierarchy("https://observablehq.com/@d3/collapsible-tree#data");
-    console.log(root)
-    const dx = 10; // rows are separated by dx pixels (a height)
-    const dy = width - 2*marginLR / (root.height + 1) // space between columns
+    const root = d3.hierarchy(treeData);
+    console.log("treeData: ", treeData)
+    console.log("root: ", root)
+
+    const dx = 15; // rows are separated by dx pixels (a height)
+    const dy = (width - 2*marginLR) / (root.height) // space between columns
 
     // tree layout, shape for links
     const tree = d3.tree().nodeSize([dx, dy])
+    // linkHorizontal creates smooth curve from one space to another. Link generator
     const diagonal = d3.linkHorizontal().x(d => d.y).y(d => d.x) // horizontal layout
 
     // creating SVG container
@@ -274,20 +275,19 @@ const CollapsibleTree = () => {
         .attr("height", dx)
         .attr("viewBox", [-marginLR, -marginTB, width, dx])
         .attr("style", "font: 10px sans-serif; user-select: none;")
-        .style("border", "black solid 1px")
 
     const gLink = svg.append("g")
         .attr("fill", "none")
-        .attr("stroke", "var(--darker-blue)")
+        .attr("stroke", "grey")
         .attr("stroke-opacity", 0.4)
-        .attr("stroke-width", 1.5)
+        .attr("strokeWidth", 1.5)
     
     const gNode = svg.append("g")
         .attr("cursor", "pointer") // pointer cursor
         .attr("pointer-events", "all") // allow events on all children
     
     function update(event, source) {
-        const duration = event?.altkey ? 2500 : 250 //slow down when alt key is pressed
+        const duration = 250 
         const nodes = root.descendants().reverse() // reverse to draw leaves on top of parents
         const links = root.links() 
 
@@ -305,6 +305,9 @@ const CollapsibleTree = () => {
 
         const transition = svg.transition()
             .duration(duration)
+        
+        // root height transition
+        transition
             .attr("height", height)
             .attr("viewBox", [-marginLR, left.x - marginTB, width, height])
             .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
@@ -315,28 +318,60 @@ const CollapsibleTree = () => {
 
         // enter new nodes at parent's prior position
         const nodeEnter = node.enter().append("g")
-            .attr("transform", d => `translate(${source.y0},${source.x0})`)
+            .attr("transform", d => `translate(${source.y0},${source.x0})`) // parent's position
             .attr("fill-opacity", 0)
             .attr("stroke-opacity", 0)
             .on("click", (event, d) => {
-                d.children = d.children ? null : d._children;
-                update(event, d)
+                d.children = d.children ? null : d._children; // toggling children on click
+                update(event, d) // recursive because we're updating the entire tree. "Update" represents 1 level of the tree.
+            })
+        
+        // To Do: Highlight paths
+        // Fix issues with toggling children not propogating over. 
+        nodeEnter.on("mouseover", (event, d) => {
+                const isHovered = (n) => n === d
+                const isRelated = (n) => n === d || n === d.parent || n.parent === d
+                // highlighting current node
+                nodeEnter.selectAll("circle")
+                    .attr("fill", n => isHovered(n) ? "var(--cambridge-blue)" : 
+                        isRelated(n) ? "var(--sage)" : n._children ? "var(--darkjasper)" : "var(--melon)")
+                    .attr("r", n => isRelated(n) ? 6 : 4)
+                nodeEnter.select("text")
+                    .attr("font-weight", n => isHovered(n) ? "bold" : "normal")
+                    .attr("font-size", n => isHovered(n) ? 15 : 10)
+            })
+            .on("mouseout", (event, d) => {
+                nodeEnter.selectAll("circle")
+                    .attr("fill", d => d._children ? "var(--darkjasper)" : "var(--melon)")
+                    .attr("r", 4)
+                nodeEnter.selectAll("text")
+                    .attr("font-weight", "normal")
+                    .attr("font-size", 10)
             })
         
         nodeEnter.append("circle")
-            .attr("r", 3)
-            .attr("fill", d => d._children ? "var(--melon)" : "white")
-            .attr("stroke-width", 10);
+            .attr("r", 4)
+            .attr("fill", d => d._children ? "var(--darkjasper)" : "var(--melon)")
+            .attr("strokeWidth", 10);
 
-        // no text for now
+        nodeEnter.append("text")
+            .attr("dy", "0.31em")
+            .attr("x", d => d._children ? -10 : 10)
+            .attr("text-anchor", d => d._children ? "end" : "start")
+            .text(d => d.data.name)
+            .attr("stroke-linejoin", "round")
+            .attr("stroke-width", 3)
+            .attr("stroke", "white")
+            .attr("paint-order", "stroke");
 
-        const nodeUpdate = node.merge(nodeEnter).transition(transition)
+        // transition nodes to new positions
+        node.merge(nodeEnter).transition(transition)
             .attr("transform", d => `translate(${d.y},${d.x})`)
             .attr("fill-opacity", 1)
             .attr("stroke-opacity", 1)
 
         // Transition exiting nodes to the parent's new position.
-        const nodeExit = node.exit().transition(transition).remove()
+        node.exit().transition(transition).remove()
             .attr("transform", d => `translate(${source.y},${source.x})`)
             .attr("fill-opacity", 0)
             .attr("stroke-opacity", 0);
@@ -390,9 +425,9 @@ const CollapsibleTree = () => {
     return (
         <div>
             <h3>Collapsible Tree</h3>
-            <p>Click on nodes to hide/reveal layers.</p>
+            <p>Click on nodes to hide/reveal layers. Hover on a node to highlight parents/children. Hide/reveal layer code mostly a direct copy of code source.</p>
             <ul>
-                <li><a href = "https://observablehq.com/@d3/collapsible-tree">Data source</a></li>
+                <li><a href = "https://observablehq.com/@d3/collapsible-tree">Code source</a></li>
                 <li><a href = "https://observablehq.com/@observablehq/plot-tree-tidy?intent=fork">Static Tree with Observable</a></li>
             </ul>
             <div ref = {collapsibleTreeRef}></div>
@@ -401,7 +436,16 @@ const CollapsibleTree = () => {
 }
 
 export default function NetworksObs() {
+    const [treeData, setTreeData] = useState(null)
     const links = riverLinksData.map(([src, tar]) => ({source: src, target: tar}))
+
+    useEffect(() => {
+        d3.json("./data/hierarchy_data.json").then(data =>
+            setTreeData(data)
+        ).catch((error) => {
+            console.log("Error parsing data: ", error)
+        })
+    }, [])
 
     return (
         <div>
@@ -416,7 +460,7 @@ export default function NetworksObs() {
             <ForceDAG nodesData = {riverNodesData} linksData = {links}/>
 
             <hr/>
-            <CollapsibleTree />
+            {treeData && <CollapsibleTree treeData = {treeData}/> }
         </div>
 
 
