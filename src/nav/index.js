@@ -8,7 +8,7 @@ const NavSidebar = () => {
     const tabs = [
         {name: "Notes", path: ""},
         {name: "General", path: "general"},
-        {name: "Networks w/ Obs", path: "networksobs"}
+        {name: "Networks Gen", path: "networksgen"}
     ]
 
     return (

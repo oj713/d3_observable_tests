@@ -68,7 +68,6 @@ const BreadHeatmap = ({breadData}) => {
   const breadDataRef = useRef();
 
   useEffect(() => {
-    console.log("Breaddata has changed");
     if (breadData) {
       const breadHeatmap = Plot.plot({
         width: 800,

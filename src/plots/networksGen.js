@@ -241,7 +241,7 @@ const ForceDAG = ({nodesData, linksData}) => {
         <div className = "form-switch form-check">
             <input className ="form-check-input p-2" type = "checkbox" role = "switch" id = "dynamic"
                 checked = {isDynamic} onChange = {() => setIsDynamic(!isDynamic)}/>
-            <label className = "form-check-label" for = "dynamic"> Dynamic Graph? </label>
+            <label className = "form-check-label" htmlFor = "dynamic"> Dynamic Graph? </label>
         </div>
         <div ref = {dagRef}></div>
         </div>
@@ -258,8 +258,6 @@ const CollapsibleTree = ({treeData}) => {
 
     // using d3.hierarchy to create a "root node"
     const root = d3.hierarchy(treeData);
-    console.log("treeData: ", treeData)
-    console.log("root: ", root)
 
     const dx = 15; // rows are separated by dx pixels (a height)
     const dy = (width - 2*marginLR) / (root.height) // space between columns
@@ -280,11 +278,49 @@ const CollapsibleTree = ({treeData}) => {
         .attr("fill", "none")
         .attr("stroke", "grey")
         .attr("stroke-opacity", 0.4)
-        .attr("strokeWidth", 1.5)
+        .attr("stroke-width", 1)
     
     const gNode = svg.append("g")
         .attr("cursor", "pointer") // pointer cursor
         .attr("pointer-events", "all") // allow events on all children
+
+    const addHighlighting = (nodeToHighlight) => {
+        // To Do: Highlight paths
+        nodeToHighlight.on("mouseover", (event, d) => {
+            const isHovered = (n) => n === d
+            const isRelated = (n) => n === d || 
+            (d.parent && n.id === d.parent.id) || 
+            (n.parent && n.parent.id === d.id)
+            const isConnected = (p) =>
+                (p.source.x === d.x && p.source.y === d.y) ||
+                (p.target.x === d.x && p.target.y === d.y)
+            // highlighting current node
+            gNode.selectAll("circle") // selecting all nodes to find relatives
+                .attr("fill", n => isHovered(n) ? "var(--cambridge-blue)" : 
+                    isRelated(n) ? "var(--sage)" : n._children ? "var(--darkjasper)" : "var(--melon)")
+                .attr("r", function(n) {
+                    return isRelated(n) ? 6 : 4}
+                )
+            // highlighting paths
+            gLink.selectAll("path")
+                .attr("stroke" , p => isConnected(p) ? "var(--sage)" : "grey")
+                .attr("stroke-width", p => isConnected(p) ? 2 : 1)
+            nodeToHighlight.select("text") // just selecting current node to change font
+                .attr("font-weight", n => isHovered(n) ? "bold" : "normal")
+                .attr("font-size", n => isHovered(n) ? 15 : 10)
+        })
+        .on("mouseout", (event, d) => {
+            gNode.selectAll("circle")
+                .attr("fill", d => d._children ? "var(--darkjasper)" : "var(--melon)")
+                .attr("r", 4)
+            gLink.selectAll("path")
+                .attr("stroke", "grey")
+                .attr("stroke-width", 1)
+            nodeToHighlight.selectAll("text")
+                .attr("font-weight", "normal")
+                .attr("font-size", 10)
+        })
+    }
     
     function update(event, source) {
         const duration = 250 
@@ -326,29 +362,6 @@ const CollapsibleTree = ({treeData}) => {
                 update(event, d) // recursive because we're updating the entire tree. "Update" represents 1 level of the tree.
             })
         
-        // To Do: Highlight paths
-        // Fix issues with toggling children not propogating over. 
-        nodeEnter.on("mouseover", (event, d) => {
-                const isHovered = (n) => n === d
-                const isRelated = (n) => n === d || n === d.parent || n.parent === d
-                // highlighting current node
-                nodeEnter.selectAll("circle")
-                    .attr("fill", n => isHovered(n) ? "var(--cambridge-blue)" : 
-                        isRelated(n) ? "var(--sage)" : n._children ? "var(--darkjasper)" : "var(--melon)")
-                    .attr("r", n => isRelated(n) ? 6 : 4)
-                nodeEnter.select("text")
-                    .attr("font-weight", n => isHovered(n) ? "bold" : "normal")
-                    .attr("font-size", n => isHovered(n) ? 15 : 10)
-            })
-            .on("mouseout", (event, d) => {
-                nodeEnter.selectAll("circle")
-                    .attr("fill", d => d._children ? "var(--darkjasper)" : "var(--melon)")
-                    .attr("r", 4)
-                nodeEnter.selectAll("text")
-                    .attr("font-weight", "normal")
-                    .attr("font-size", 10)
-            })
-        
         nodeEnter.append("circle")
             .attr("r", 4)
             .attr("fill", d => d._children ? "var(--darkjasper)" : "var(--melon)")
@@ -363,6 +376,9 @@ const CollapsibleTree = ({treeData}) => {
             .attr("stroke-width", 3)
             .attr("stroke", "white")
             .attr("paint-order", "stroke");
+
+        // add highlighting
+        addHighlighting(nodeEnter)
 
         // transition nodes to new positions
         node.merge(nodeEnter).transition(transition)
@@ -425,7 +441,9 @@ const CollapsibleTree = ({treeData}) => {
     return (
         <div>
             <h3>Collapsible Tree</h3>
-            <p>Click on nodes to hide/reveal layers. Hover on a node to highlight parents/children. Hide/reveal layer code mostly a direct copy of code source.</p>
+            <p>Click on nodes to hide/reveal layers. Hover on a node to highlight parents/children. Hide/reveal layer code mostly a direct copy of code source.
+                Highlighting after click only works after re-highlight, will not fix
+            </p>
             <ul>
                 <li><a href = "https://observablehq.com/@d3/collapsible-tree">Code source</a></li>
                 <li><a href = "https://observablehq.com/@observablehq/plot-tree-tidy?intent=fork">Static Tree with Observable</a></li>
@@ -435,7 +453,7 @@ const CollapsibleTree = ({treeData}) => {
     )
 }
 
-export default function NetworksObs() {
+export default function NetworksGen() {
     const [treeData, setTreeData] = useState(null)
     const links = riverLinksData.map(([src, tar]) => ({source: src, target: tar}))
 
@@ -449,7 +467,7 @@ export default function NetworksObs() {
 
     return (
         <div>
-            <h2>Visualizing Networks with Observable</h2>
+            <h2>Visualizing Networks with D3</h2>
             <hr/>
             <h3>Simple Nodes and Arrows Diagram</h3>
             <p> Node size and Link size are weighted by importance. <a href = "https://observablehq.com/@observablehq/plot-finite-state-machine?intent=fork">source</a> </p>

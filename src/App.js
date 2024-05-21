@@ -4,7 +4,7 @@ import {Routes, Route} from 'react-router';
 import NotesBox from './notesbox.js';
 import NavSidebar from './nav';
 import GeneralPage from './plots/general.js';
-import NetworksObs from './plots/networksObs.js';
+import NetworksGen from './plots/networksGen.js';
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
           <Routes>
             <Route path="/" element={<NotesBox/>} />
             <Route path="/general" element={<GeneralPage/>} />
-            <Route path="/networksobs" element={<NetworksObs/>} />
+            <Route path="/networksgen" element={<NetworksGen/>} />
           </Routes>
         </div>
       </div>
