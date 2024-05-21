@@ -479,6 +479,9 @@ export default function NetworksGen() {
 
             <hr/>
             {treeData && <CollapsibleTree treeData = {treeData}/> }
+
+            <hr/>
+            <p> Future example: Fisheye distortion, <a href = "https://bost.ocks.org/mike/fisheye/">source</a></p>
         </div>
 
 
