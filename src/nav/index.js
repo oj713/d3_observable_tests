@@ -6,7 +6,7 @@ const NavSidebar = () => {
     let active = pathname.split("/")[1];
 
     const tabs = [
-        {name: "Notes", path: ""},
+        {name: "Notes", path: "/"},
         {name: "General", path: "general"},
         {name: "Networks w/ Obs", path: "networksobs"}
     ]
@@ -15,7 +15,7 @@ const NavSidebar = () => {
     <div className = "jasper col sidebar nopad">
         <ul className = "list-group list-group-flush">
             {tabs.map(tab => 
-                <a href = {`/${tab.path}`} key = {tab.path} 
+                <a href = {`${tab.path}`} key = {tab.path} 
                 className = {`${active === tab.path ? "active" : ""} list-group-item`}> {tab.name} </a>)}
         </ul>
     </div>
