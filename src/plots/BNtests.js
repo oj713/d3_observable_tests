@@ -3,12 +3,12 @@ import * as d3 from "d3";
 
 const PieNodeExample = () => {
     const pieRef = useRef();
-
-    const pieData = [
+    let [pieData, setPieData] = useState([
         { option : "Deficient", value : 0.1},
         { option : "Normal", value : 0.7},
         { option : "Excess", value : 0.2}
-    ]
+    ])
+
     // color scale
     const color = {
         "Deficient": "#75B9BE",
@@ -40,23 +40,23 @@ const PieNodeExample = () => {
         .innerRadius(innerRadius)
         .outerRadius(outerRadius)
 
-    // ----------------------------- Pie chart
-    const center = svg.append('g')
-        .attr('transform', `translate(${size/2}, ${size/2})`)
+    const arcsData = pie(pieData)
 
-    const centerText = center.append('text')
+    // ----------------------------- Pie chart
+    svg.append('g').append('text') // center text
+        .attr('transform', `translate(${size/2}, ${size/2})`)
         .attr('text-anchor', 'middle')
         .attr('id', 'centerText')
         .attr('font-size', "1.5rem")
         .attr('stroke', 'black')
         .attr('font-weight', 'bold')
-        .append('tspan')
+    .append('tspan')
         .attr('x', "0")
         .text("Dough")
     
     const arcs = svg
         .selectAll('g.arc')
-        .data(pie(pieData))
+        .data(arcsData)
         .join('g')
         .attr('class', 'arc')
             .classed('arc', true) // for css styling
@@ -66,8 +66,9 @@ const PieNodeExample = () => {
         .attr('fill', d => color[d.data.option])
         .attr('opacity', .8)
         .attr('d', arc)
+        //.attr('transform', 'rotate(-90)')
         .attr('clip-path', d => `url(#clip-${d.index})`) // hide excess stroke
-        .on("mousemove", handleMouseOver)
+        .on("mouseenter", handleMouseOver)
         .on("mouseout", handleMouseOut)
         .append('title').text(d => d.data.name) // alt text
 
@@ -114,6 +115,70 @@ const PieNodeExample = () => {
             .text("Dough")
     }
 
+    // --- Dragging
+    const dragMin = .04
+    const dragRadius = outerRadius + 15
+
+    arcsData.forEach((d, i) => d.currentAngle = d.startAngle)
+
+    // Draggable circles
+    const draggable = svg.append('g')
+        .selectAll('text.draghandles')
+        .data(arcsData)
+        .join('text')
+        .attr('class', 'draghandles')
+        .attr('text-anchor', 'middle')
+        .attr('cursor', 'pointer')
+        .attr('transform', d => {
+            const dx = Math.sin(d.startAngle) * dragRadius
+            const dy = -Math.cos(d.startAngle) * dragRadius
+            return `translate(${size/2 + dx}, ${size/2 + dy}) rotate(${d.startAngle * 180/Math.PI})`
+        })
+        .attr('id', d => `drag-${d.index}`)
+        .attr('dominant-baseline', 'central')
+        .attr('font-family', 'FontAwesome')
+        .attr('font-size', '15px')
+        .attr('fill', 'grey')
+        .on(`mouseenter`, function(d) {d3.select(this).attr('fill', 'black')})
+        .on(`mouseout`, function(d) {d3.select(this).attr('fill', 'grey')})
+        .text('\uf337');
+
+    const updateDragHandles = () => {
+        draggable
+            .attr('transform', d => {
+                const dx = Math.sin(d.currentAngle) * dragRadius
+                const dy = -Math.cos(d.currentAngle) * dragRadius
+                return `translate(${size/2 + dx}, ${size/2 + dy}) rotate(${d.currentAngle * 180/Math.PI})`
+            })
+    }
+
+    // Dragging function
+    const dragFunction = (event) => { 
+        // technically this could be called outside for optimization
+        const priorAngle = arcsData[event.subject.index].startAngle 
+        const nextAngle = arcsData[(event.subject.index - 1 + arcsData.length) % arcsData.length].startAngle 
+        // 0 is at 12 o'clock, positive clockwise
+        const cursorAngle = (Math.atan2(event.x - size/2, size/2 - event.y) + 2*Math.PI) % (2*Math.PI)
+
+        // check if cursor is between the prior and next angles, accounting for 0 deg crossing
+        const inGreenZone = priorAngle > nextAngle ? 
+            (cursorAngle > priorAngle || cursorAngle < nextAngle) :
+            (cursorAngle > priorAngle && cursorAngle < nextAngle)
+
+        if (Math.abs(cursorAngle - event.subject.startAngle) < dragMin) {
+            event.subject.currentAngle = event.subject.startAngle // snap to start angle
+        } else if (inGreenZone) {
+            event.subject.currentAngle = cursorAngle
+        }
+        updateDragHandles()
+    }
+
+    draggable.call(d3.drag()
+        .on('drag', dragFunction)
+        .on('end', event => {
+            event.subject.startAngle = event.subject.currentAngle
+        }))
+
     // ----------------------------- Appending to DOM
 
     useEffect(() => {
@@ -125,10 +190,11 @@ const PieNodeExample = () => {
         <div>
             <h2> Pie Chart Node </h2>
             <p>Pie chart node. Hover for individual probabilities, drag to edit. Click outside the circle to reset to default. </p>
-            <p><b>DRAG TO EDIT IS A WIP</b></p>
+            <p>Issues: Snapping not perfect at 0 deg</p>
             <ul>
                 <li><a href = "https://observablehq.com/@crazyjackel/pie-chart">Hover source</a></li>
                 <li><a href = "https://observablehq.com/@pearmini/draggable-pie-chart-for-g2">Draggable source</a></li>
+                <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animated probability shift</a></li>
             </ul>
             <div ref = {pieRef}></div>
         </div>
