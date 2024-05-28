@@ -3,11 +3,11 @@ import * as d3 from "d3";
 
 const PieNodeExample = () => {
     const pieRef = useRef();
-    let [pieData, setPieData] = useState([
-        { option : "Deficient", value : 0.1},
-        { option : "Normal", value : 0.7},
-        { option : "Excess", value : 0.2}
-    ])
+    const pieDataStarter = [
+        { option : "Deficient", value : 10},
+        { option : "Normal", value : 70},
+        { option : "Excess", value : 20}
+    ]
 
     // color scale
     const color = {
@@ -31,16 +31,18 @@ const PieNodeExample = () => {
 
     // PIE data converter using d3
     const pie = d3.pie()
-        .value(d => d.value)
+        .value(d => (d.value / 100))
         .startAngle(startAngle)
         .endAngle(endAngle)
+        .sortValues(null)
 
     // ARC data converter
     const arc = d3.arc()
         .innerRadius(innerRadius)
         .outerRadius(outerRadius)
 
-    const arcsData = pie(pieData)
+    const [arcsData, setArcsData] = useState(pie(pieDataStarter))
+    const [isDragging, setIsDragging] = useState(false)
 
     // ----------------------------- Pie chart
     svg.append('g').append('text') // center text
@@ -79,6 +81,7 @@ const PieNodeExample = () => {
 
     // ----------------------------- Mouseover functions
     function handleMouseOver(d, i) {
+        if (isDragging) {return} 
         d3.select(this)
             .attr("stroke", "black")
             .attr("stroke-width", stroke)
@@ -97,10 +100,11 @@ const PieNodeExample = () => {
             .attr('font-size', "1.2rem")
             .attr('x', "0")
             .attr('dy', '1.7rem')
-            .text(`${100*d.target.__data__.data.value}%`)
+            .text(`${d.target.__data__.data.value}%`)
     }
 
     function handleMouseOut(d, i) {
+        if (isDragging) {return}
         d3.select(this)
             .attr("stroke", "none")
             .attr('opacity', .8)
@@ -119,7 +123,7 @@ const PieNodeExample = () => {
     const dragMin = .04
     const dragRadius = outerRadius + 15
 
-    arcsData.forEach((d, i) => d.currentAngle = d.startAngle)
+    arcsData.forEach(d => d.currentAngle = d.startAngle)
 
     // Draggable circles
     const draggable = svg.append('g')
@@ -155,8 +159,10 @@ const PieNodeExample = () => {
     // Dragging function
     const dragFunction = (event) => { 
         // technically this could be called outside for optimization
-        const priorAngle = arcsData[event.subject.index].startAngle 
-        const nextAngle = arcsData[(event.subject.index - 1 + arcsData.length) % arcsData.length].startAngle 
+        const priorAngle = arcsData[event.subject.index === 0 ? 
+            arcsData.length - 1 : event.subject.index - 1].startAngle
+        const nextAngle = arcsData[event.subject.index === 2 ? 
+            0 : event.subject.index + 1].startAngle 
         // 0 is at 12 o'clock, positive clockwise
         const cursorAngle = (Math.atan2(event.x - size/2, size/2 - event.y) + 2*Math.PI) % (2*Math.PI)
 
@@ -173,11 +179,40 @@ const PieNodeExample = () => {
         updateDragHandles()
     }
 
+    const dragEnded = (event) => {
+        setIsDragging(false)
+        event.subject.startAngle = event.subject.currentAngle
+
+        const replaceArc = (d, i) => {
+            let newArc = d
+            if (i === event.subject.index) {
+                newArc = {...d, startAngle: event.subject.startAngle}
+            } else if (i === (event.subject.index === 0 ? arcsData.length - 1 : event.subject.index - 1)) {
+                newArc = {...d, endAngle: event.subject.startAngle}
+            } 
+
+            // exclusively messing with end angle, start angle is relied on elsewhere
+            if ((newArc.endAngle - newArc.startAngle) > 2*Math.PI) {
+                newArc.endAngle = newArc.endAngle % (2*Math.PI)
+            } else if (newArc.endAngle < newArc.startAngle) {
+                newArc.endAngle += 2*Math.PI
+            }
+
+            newArc.data.value = Math.round((newArc.endAngle - newArc.startAngle) * 100 / (2*Math.PI))
+
+            return newArc
+        }
+
+        // update ArcsData
+        setArcsData(
+            arcsData.map(replaceArc)
+        )
+    }
+
     draggable.call(d3.drag()
+        .on('start', event => setIsDragging(true))
         .on('drag', dragFunction)
-        .on('end', event => {
-            event.subject.startAngle = event.subject.currentAngle
-        }))
+        .on('end', dragEnded))
 
     // ----------------------------- Appending to DOM
 
