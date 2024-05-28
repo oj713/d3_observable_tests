@@ -42,7 +42,6 @@ const PieNodeExample = () => {
         .outerRadius(outerRadius)
 
     const [arcsData, setArcsData] = useState(pie(pieDataStarter))
-    const [isDragging, setIsDragging] = useState(false)
 
     // ----------------------------- Pie chart
     svg.append('g').append('text') // center text
@@ -81,7 +80,6 @@ const PieNodeExample = () => {
 
     // ----------------------------- Mouseover functions
     function handleMouseOver(d, i) {
-        if (isDragging) {return} 
         d3.select(this)
             .attr("stroke", "black")
             .attr("stroke-width", stroke)
@@ -104,7 +102,6 @@ const PieNodeExample = () => {
     }
 
     function handleMouseOut(d, i) {
-        if (isDragging) {return}
         d3.select(this)
             .attr("stroke", "none")
             .attr('opacity', .8)
@@ -180,7 +177,6 @@ const PieNodeExample = () => {
     }
 
     const dragEnded = (event) => {
-        setIsDragging(false)
         event.subject.startAngle = event.subject.currentAngle
 
         const replaceArc = (d, i) => {
@@ -210,7 +206,6 @@ const PieNodeExample = () => {
     }
 
     draggable.call(d3.drag()
-        .on('start', event => setIsDragging(true))
         .on('drag', dragFunction)
         .on('end', dragEnded))
 
