@@ -27,7 +27,6 @@ const PieNodeExample = ({color}) => {
         (pieDataStarter)
     )
 
-    useEffect(() => {
     // ---------------- svg initialization
     const svg = d3.create('svg')
     .attr("width", size)
@@ -130,6 +129,8 @@ const PieNodeExample = ({color}) => {
             const dy = -Math.cos(d.startAngle) * dragRadius
             return `translate(${size/2 + dx}, ${size/2 + dy}) rotate(${d.startAngle * 180/Math.PI})`
         })
+        .on('mouseenter', (event, d) => d3.select(`#drag-${d.index}`).attr('fill', 'black'))
+        .on('mouseout', (event, d) => d3.select(`#drag-${d.index}`).attr('fill', 'grey'))
         .attr('id', d => `drag-${d.index}`)
         .attr('dominant-baseline', 'central')
         .attr('font-family', 'FontAwesome')
@@ -148,6 +149,8 @@ const PieNodeExample = ({color}) => {
 
     // Dragging function
     const dragFunction = (event) => { 
+        d3.select(`#drag-${event.subject.index}`).attr('fill', 'black')
+
         // technically this could be called outside for optimization
         const priorAngle = arcsData[event.subject.index === 0 ? 
             arcsData.length - 1 : event.subject.index - 1].startAngle
@@ -203,11 +206,12 @@ const PieNodeExample = ({color}) => {
         .on('end', dragEnded))
 
     // ----------------------------- Appending to DOM
+    useEffect(() => {
     pieRef.current.appendChild(svg.node())
 
     return () => svg.node().remove()
 
-    }, [arcsData, innerRadius, outerRadius, color])
+    }, [svg])
 
     return (
         <div>
@@ -233,102 +237,94 @@ const PieNode = ({idx, nodeData, color}) => {
     const startAngle = 0;
     const endAngle = 4 * Math.PI;
     const stroke = 5;
-    const innerRadius = size/6;
+    const innerRadius = size/5;
     const outerRadius = (size * .4);
 
-    useEffect(() => {
-        const pieSvg = d3.create('svg')
-        .attr("width", size)
-        .attr("height", size)
+    const pieSvg = d3.create('svg')
+    .attr("width", size)
+    .attr("height", size)
 
-        // PIE data converter using d3
-        const pie = d3.pie()
-            .value(d => (d.value))
-            .startAngle(startAngle)
-            .endAngle(endAngle)
-            .sortValues(null)
+    // PIE data converter using d3
+    const pie = d3.pie()
+        .value(d => (d.value))
+        .startAngle(startAngle)
+        .endAngle(endAngle)
+        .sortValues(null)
 
-        // ARC data converter
-        const arcFunc = d3.arc()
-            .innerRadius(innerRadius)
-            .outerRadius(outerRadius)
+    // ARC data converter
+    const arcFunc = d3.arc()
+        .innerRadius(innerRadius)
+        .outerRadius(outerRadius)
+    const arcData = pie(nodeData)
 
-        const arcData = pie(nodeData)
+    // ----------------------------- Pie chart
+    pieSvg.append('g').append('text') // center text
+        .attr('transform', `translate(${size/2}, ${size/2})`)
+        .attr('text-anchor', 'middle')
+        .attr('id', "centerText")
+        .attr('font-size', "1.2rem")
+        .attr('stroke', 'black')
+        .attr('font-weight', 'bold')
+    .append('tspan')
+        .attr('x', "0")
+        .text("Dough")
 
-        // ----------------------------- Pie chart
-        pieSvg.append('g').append('text') // center text
+    const arcs = pieSvg
+        .selectAll('g.arc')
+        .data(arcData)
+        .join('g')
+        .attr('class', 'arc')
             .attr('transform', `translate(${size/2}, ${size/2})`)
-            .attr('text-anchor', 'middle')
-            .attr('id', "centerText")
-            .attr('font-size', "1.5rem")
-            .attr('stroke', 'black')
-            .attr('font-weight', 'bold')
+
+    arcs.append('path')
+        .attr('fill', d => color[d.data.option])
+        .attr('opacity', .8)
+        .attr('d', arcFunc)
+        .attr('clip-path', d => `url(#clip-${idx}-${d.index})`) // hide excess stroke
+        .on("mouseenter", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .append('title').text(d => d.data.name) // alt text
+    arcs.append('clipPath') // a clipPath is a mask
+        .attr('id', d => `clip-${idx}-${d.index}`)
+        .append('path')
+        .attr('d', arcFunc);
+
+    // ----------------------------- Mouseover functions
+    function handleMouseOver(d, i) {
+        d3.select(this)
+            .attr("stroke", "black")
+            .attr("stroke-width", stroke)
+            .attr("z-index", 100)
+            .attr('opacity', 1)
+    
+        const centerText = pieSvg.select('#centerText')
+            .attr('font-weight', 'normal')
+        centerText.selectAll('tspan').remove()
+        centerText.append('tspan')
+            .attr('x', "0")
+            .text(d.target.__data__.data.option)
         .append('tspan')
+            .attr('font-size', "1rem")
+            .attr('x', "0")
+            .attr('dy', '1.2rem')
+            .text(`${d.target.__data__.data.value}%`)
+    }
+    function handleMouseOut(d, i) {
+        d3.select(this)
+            .attr("stroke", "none")
+            .attr('opacity', .8)
+        const centerText = pieSvg.select('#centerText')
+            .attr('font-weight', 'bold')
+        centerText.selectAll('tspan').remove()
+        centerText.append('tspan')
             .attr('x', "0")
             .text("Dough")
-    
-        const arcs = pieSvg
-            .selectAll('g.arc')
-            .data(arcData)
-            .join('g')
-            .attr('class', 'arc')
-                .attr('transform', `translate(${size/2}, ${size/2})`)
-    
-        arcs.append('path')
-            .attr('fill', d => color[d.data.option])
-            .attr('opacity', .8)
-            .attr('d', arcFunc)
-            .attr('clip-path', d => `url(#clip-${idx}-${d.index})`) // hide excess stroke
-            .on("mouseenter", handleMouseOver)
-            .on("mouseout", handleMouseOut)
-            .append('title').text(d => d.data.name) // alt text
+    }
 
-        arcs.append('clipPath') // a clipPath is a mask
-            .attr('id', d => `clip-${idx}-${d.index}`)
-            .append('path')
-            .attr('d', arcFunc);
-
-        // ----------------------------- Mouseover functions
-        function handleMouseOver(d, i) {
-            d3.select(this)
-                .attr("stroke", "black")
-                .attr("stroke-width", stroke)
-                .attr("z-index", 100)
-                .attr('opacity', 1)
-        
-            const centerText = pieSvg.select('#centerText')
-                .attr('font-weight', 'normal')
-
-            centerText.selectAll('tspan').remove()
-
-            centerText.append('tspan')
-                .attr('x', "0")
-                .text(d.target.__data__.data.option)
-            .append('tspan')
-                .attr('font-size', "1.2rem")
-                .attr('x', "0")
-                .attr('dy', '1.7rem')
-                .text(`${d.target.__data__.data.value}%`)
-        }
-
-        function handleMouseOut(d, i) {
-            d3.select(this)
-                .attr("stroke", "none")
-                .attr('opacity', .8)
-
-            const centerText = pieSvg.select('#centerText')
-                .attr('font-weight', 'bold')
-
-            centerText.selectAll('tspan').remove()
-
-            centerText.append('tspan')
-                .attr('x', "0")
-                .text("Dough")
-        }
-
+    useEffect(() => {
         pieNodeRef.current.appendChild(pieSvg.node())
         return () => pieSvg.node().remove()
-    }, [endAngle, innerRadius, nodeData, outerRadius, color, idx])
+    }, [pieSvg])
 
     return (
         <div className = "d-inline" ref = {pieNodeRef}></div>
@@ -363,6 +359,7 @@ export default function BNtests() {
             <hr/>
             <PieNodeExample color = {colorScale}/>
             <hr/>
+            <p>Inline, repeatable pie chart element</p>
             {pieNodes.map((node, i) => <PieNode idx = {i} nodeData = {node} color = {colorScale}/>)}
             <hr/>
             <p>To implement: <a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></p>
