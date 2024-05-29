@@ -1,20 +1,13 @@
 import {useRef, useEffect, useState} from "react";
 import * as d3 from "d3";
 
-const PieNodeExample = () => {
+const PieNodeExample = ({color}) => {
     const pieRef = useRef();
     const pieDataStarter = [
         { option : "Deficient", value : 10},
         { option : "Normal", value : 70},
         { option : "Excess", value : 20}
     ]
-
-    // color scale
-    const color = {
-        "Deficient": "#75B9BE",
-        "Normal": "#FCDE9C",
-        "Excess": "#F15946"
-    }
 
     // basic attributes
     const size = 400;
@@ -24,24 +17,26 @@ const PieNodeExample = () => {
     const innerRadius = size/5;
     const outerRadius = (size * .4);
 
+    // PIE data converter using d3
+    const [arcsData, setArcsData] = useState(
+        d3.pie()
+        .value(d => (d.value / 100))
+        .startAngle(startAngle)
+        .endAngle(endAngle)
+        .sortValues(null)
+        (pieDataStarter)
+    )
+
+    useEffect(() => {
     // ---------------- svg initialization
     const svg = d3.create('svg')
     .attr("width", size)
     .attr("height", size)
 
-    // PIE data converter using d3
-    const pie = d3.pie()
-        .value(d => (d.value / 100))
-        .startAngle(startAngle)
-        .endAngle(endAngle)
-        .sortValues(null)
-
     // ARC data converter
     const arc = d3.arc()
         .innerRadius(innerRadius)
         .outerRadius(outerRadius)
-
-    const [arcsData, setArcsData] = useState(pie(pieDataStarter))
 
     // ----------------------------- Pie chart
     svg.append('g').append('text') // center text
@@ -68,13 +63,13 @@ const PieNodeExample = () => {
         .attr('opacity', .8)
         .attr('d', arc)
         //.attr('transform', 'rotate(-90)')
-        .attr('clip-path', d => `url(#clip-${d.index})`) // hide excess stroke
+        .attr('clip-path', d => `url(#clip-example-${d.index})`) // hide excess stroke
         .on("mouseenter", handleMouseOver)
         .on("mouseout", handleMouseOut)
         .append('title').text(d => d.data.name) // alt text
 
     arcs.append('clipPath') // a clipPath is a mask
-        .attr('id', d => `clip-${d.index}`)
+        .attr('id', d => `clip-example-${d.index}`)
         .append('path')
         .attr('d', arc);
 
@@ -208,11 +203,11 @@ const PieNodeExample = () => {
         .on('end', dragEnded))
 
     // ----------------------------- Appending to DOM
+    pieRef.current.appendChild(svg.node())
 
-    useEffect(() => {
-        pieRef.current.appendChild(svg.node())
-        return () => svg.node().remove()
-    }, [svg])
+    return () => svg.node().remove()
+
+    }, [arcsData, innerRadius, outerRadius, color])
 
     return (
         <div>
@@ -230,11 +225,11 @@ const PieNodeExample = () => {
 }
 
 // nodeData must have option, and value keys
-const PieNode = ({nodeData}) => {
+const PieNode = ({idx, nodeData, color}) => {
     const pieNodeRef = useRef();
 
     // basic attributes
-    const size = 300;
+    const size = 250;
     const startAngle = 0;
     const endAngle = 4 * Math.PI;
     const stroke = 5;
@@ -242,13 +237,6 @@ const PieNode = ({nodeData}) => {
     const outerRadius = (size * .4);
 
     useEffect(() => {
-        // color scale
-        const color = {
-            "Deficient": "#75B9BE",
-            "Normal": "#FCDE9C",
-            "Excess": "#F15946"
-        }
-
         const pieSvg = d3.create('svg')
         .attr("width", size)
         .attr("height", size)
@@ -290,13 +278,13 @@ const PieNode = ({nodeData}) => {
             .attr('fill', d => color[d.data.option])
             .attr('opacity', .8)
             .attr('d', arcFunc)
-            .attr('clip-path', d => `url(#clip-${d.index})`) // hide excess stroke
+            .attr('clip-path', d => `url(#clip-${idx}-${d.index})`) // hide excess stroke
             .on("mouseenter", handleMouseOver)
             .on("mouseout", handleMouseOut)
             .append('title').text(d => d.data.name) // alt text
 
         arcs.append('clipPath') // a clipPath is a mask
-            .attr('id', d => `clip-${d.index}`)
+            .attr('id', d => `clip-${idx}-${d.index}`)
             .append('path')
             .attr('d', arcFunc);
 
@@ -340,26 +328,42 @@ const PieNode = ({nodeData}) => {
 
         pieNodeRef.current.appendChild(pieSvg.node())
         return () => pieSvg.node().remove()
-    }, [endAngle, innerRadius, nodeData, outerRadius])
+    }, [endAngle, innerRadius, nodeData, outerRadius, color, idx])
 
     return (
-        <div ref = {pieNodeRef}></div>
+        <div className = "d-inline" ref = {pieNodeRef}></div>
     )
 }
 
 export default function BNtests() {
-    const pieDataExample = [
+    const pieNodes = [[
         { option : "Deficient", value : .3},
         { option : "Normal", value : .5},
         { option : "Excess", value : .2}
-    ]
+    ], [
+        { option : "Deficient", value : .4},
+        { option : "Normal", value : .3},
+        { option : "Excess", value : .3}
+    ], [
+        { option : "Deficient", value : .2},
+        { option : "Normal", value : .6},
+        { option : "Excess", value : .2}
+    ]]
+
+    // color scale
+    const colorScale = {
+        "Deficient": "#75B9BE",
+        "Normal": "#FCDE9C",
+        "Excess": "#F15946"
+    }
+
     return (
         <div>
             <h2>Bayesian Networks</h2>
             <hr/>
-            <PieNodeExample/>
+            <PieNodeExample color = {colorScale}/>
             <hr/>
-            <PieNode nodeData = {pieDataExample}/>
+            {pieNodes.map((node, i) => <PieNode idx = {i} nodeData = {node} color = {colorScale}/>)}
             <hr/>
             <p>To implement: <a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></p>
         </div>
