@@ -86,7 +86,7 @@ const PieNodeExample = () => {
             .attr("z-index", 100)
             .attr('opacity', 1)
         
-        const centerText = d3.select('#centerText')
+        const centerText = svg.select('#centerText')
             .attr('font-weight', 'normal')
 
         centerText.selectAll('tspan').remove()
@@ -106,7 +106,7 @@ const PieNodeExample = () => {
             .attr("stroke", "none")
             .attr('opacity', .8)
 
-        const centerText = d3.select('#centerText')
+        const centerText = svg.select('#centerText')
             .attr('font-weight', 'bold')
 
         centerText.selectAll('tspan').remove()
@@ -140,8 +140,6 @@ const PieNodeExample = () => {
         .attr('font-family', 'FontAwesome')
         .attr('font-size', '15px')
         .attr('fill', 'grey')
-        .on(`mouseenter`, function(d) {d3.select(this).attr('fill', 'black')})
-        .on(`mouseout`, function(d) {d3.select(this).attr('fill', 'grey')})
         .text('\uf337');
 
     const updateDragHandles = () => {
@@ -220,7 +218,7 @@ const PieNodeExample = () => {
         <div>
             <h2> Pie Chart Node </h2>
             <p>Pie chart node. Hover for individual probabilities, drag to edit. Click outside the circle to reset to default. </p>
-            <p>Issues: Snapping not perfect at 0 deg</p>
+            <p>Issues: Snapping not perfect at 0 deg, hover actions</p>
             <ul>
                 <li><a href = "https://observablehq.com/@crazyjackel/pie-chart">Hover source</a></li>
                 <li><a href = "https://observablehq.com/@pearmini/draggable-pie-chart-for-g2">Draggable source</a></li>
@@ -231,12 +229,137 @@ const PieNodeExample = () => {
     )
 }
 
+// nodeData must have option, and value keys
+const PieNode = ({nodeData}) => {
+    const pieNodeRef = useRef();
+
+    // basic attributes
+    const size = 300;
+    const startAngle = 0;
+    const endAngle = 4 * Math.PI;
+    const stroke = 5;
+    const innerRadius = size/6;
+    const outerRadius = (size * .4);
+
+    useEffect(() => {
+        // color scale
+        const color = {
+            "Deficient": "#75B9BE",
+            "Normal": "#FCDE9C",
+            "Excess": "#F15946"
+        }
+
+        const pieSvg = d3.create('svg')
+        .attr("width", size)
+        .attr("height", size)
+
+        // PIE data converter using d3
+        const pie = d3.pie()
+            .value(d => (d.value))
+            .startAngle(startAngle)
+            .endAngle(endAngle)
+            .sortValues(null)
+
+        // ARC data converter
+        const arcFunc = d3.arc()
+            .innerRadius(innerRadius)
+            .outerRadius(outerRadius)
+
+        const arcData = pie(nodeData)
+
+        // ----------------------------- Pie chart
+        pieSvg.append('g').append('text') // center text
+            .attr('transform', `translate(${size/2}, ${size/2})`)
+            .attr('text-anchor', 'middle')
+            .attr('id', "centerText")
+            .attr('font-size', "1.5rem")
+            .attr('stroke', 'black')
+            .attr('font-weight', 'bold')
+        .append('tspan')
+            .attr('x', "0")
+            .text("Dough")
+    
+        const arcs = pieSvg
+            .selectAll('g.arc')
+            .data(arcData)
+            .join('g')
+            .attr('class', 'arc')
+                .attr('transform', `translate(${size/2}, ${size/2})`)
+    
+        arcs.append('path')
+            .attr('fill', d => color[d.data.option])
+            .attr('opacity', .8)
+            .attr('d', arcFunc)
+            .attr('clip-path', d => `url(#clip-${d.index})`) // hide excess stroke
+            .on("mouseenter", handleMouseOver)
+            .on("mouseout", handleMouseOut)
+            .append('title').text(d => d.data.name) // alt text
+
+        arcs.append('clipPath') // a clipPath is a mask
+            .attr('id', d => `clip-${d.index}`)
+            .append('path')
+            .attr('d', arcFunc);
+
+        // ----------------------------- Mouseover functions
+        function handleMouseOver(d, i) {
+            d3.select(this)
+                .attr("stroke", "black")
+                .attr("stroke-width", stroke)
+                .attr("z-index", 100)
+                .attr('opacity', 1)
+        
+            const centerText = pieSvg.select('#centerText')
+                .attr('font-weight', 'normal')
+
+            centerText.selectAll('tspan').remove()
+
+            centerText.append('tspan')
+                .attr('x', "0")
+                .text(d.target.__data__.data.option)
+            .append('tspan')
+                .attr('font-size', "1.2rem")
+                .attr('x', "0")
+                .attr('dy', '1.7rem')
+                .text(`${d.target.__data__.data.value}%`)
+        }
+
+        function handleMouseOut(d, i) {
+            d3.select(this)
+                .attr("stroke", "none")
+                .attr('opacity', .8)
+
+            const centerText = pieSvg.select('#centerText')
+                .attr('font-weight', 'bold')
+
+            centerText.selectAll('tspan').remove()
+
+            centerText.append('tspan')
+                .attr('x', "0")
+                .text("Dough")
+        }
+
+        pieNodeRef.current.appendChild(pieSvg.node())
+        return () => pieSvg.node().remove()
+    }, [endAngle, innerRadius, nodeData, outerRadius])
+
+    return (
+        <div ref = {pieNodeRef}></div>
+    )
+}
+
 export default function BNtests() {
+    const pieDataExample = [
+        { option : "Deficient", value : .3},
+        { option : "Normal", value : .5},
+        { option : "Excess", value : .2}
+    ]
     return (
         <div>
             <h2>Bayesian Networks</h2>
             <hr/>
             <PieNodeExample/>
+            <hr/>
+            <PieNode nodeData = {pieDataExample}/>
             <hr/>
             <p>To implement: <a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></p>
         </div>
