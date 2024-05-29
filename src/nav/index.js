@@ -9,7 +9,8 @@ const NavSidebar = () => {
         {name: "Notes", path: ""},
         {name: "General", path: "general"},
         {name: "Networks Gen", path: "networksgen"},
-        {name: "Bayesian Nets", path: "bayesian-nets"}
+        {name: "Bayesian Nodes", path: "bayesian-nodes"},
+        {name: "Bayesian Net", path: "bayesian-net"}
     ]
 
     return (

@@ -331,7 +331,7 @@ const PieNode = ({idx, nodeData, color}) => {
     )
 }
 
-export default function BNtests() {
+export default function NodeTests() {
     const pieNodes = [[
         { option : "Deficient", value : .3},
         { option : "Normal", value : .5},
@@ -355,14 +355,12 @@ export default function BNtests() {
 
     return (
         <div>
-            <h2>Bayesian Networks</h2>
+            <h2>Node Tests</h2>
             <hr/>
             <PieNodeExample color = {colorScale}/>
             <hr/>
             <p>Inline, repeatable pie chart element</p>
             {pieNodes.map((node, i) => <PieNode idx = {i} nodeData = {node} color = {colorScale}/>)}
-            <hr/>
-            <p>To implement: <a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></p>
         </div>
     )
 }

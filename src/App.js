@@ -5,7 +5,8 @@ import NotesBox from './notesbox.js';
 import NavSidebar from './nav';
 import GeneralPage from './plots/general.js';
 import NetworksGen from './plots/networksGen.js';
-import BNtests from './plots/BNtests.js';
+import NodeTests from './plots/nodeTests.js';
+import BayesianNet from './plots/bayesian_net.js';
 
 function App() {
   return (
@@ -17,7 +18,8 @@ function App() {
             <Route path="/" element={<NotesBox/>} />
             <Route path="/general" element={<GeneralPage/>} />
             <Route path="/networksgen" element={<NetworksGen/>} />
-            <Route path="/bayesian-nets" element={<BNtests/>} />
+            <Route path="/bayesian-nodes" element={<NodeTests/>} />
+            <Route path="/bayesian-net" element={<BayesianNet/>} />
           </Routes>
         </div>
       </div>
