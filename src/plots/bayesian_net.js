@@ -41,7 +41,7 @@ export default function BayesianNet() {
 
         // basic features of the graph
         const width = window.innerWidth - 300
-        const height = .8 * width
+        const height = Math.min(.8 * width, 600)
         const radius = 35 // node size
         const duration = 750 // ms, for animations
 
@@ -145,8 +145,12 @@ export default function BayesianNet() {
             const propagateEvidence = (event, d) => {
                 const target = d.data.label;
                 // setting 100% for target
-                node.values.forEach(option => option.label === target ? option.value = 1 : option.value = 0)
-                setEvidence(node)
+                setEvidence(
+                    {...node, 
+                        values: node.values.map(option => 
+                            option.label === target ? {...option, value: 1} : {...option, value: 0})
+                    }
+                )
             }
 
             pieContainer.selectAll('path')
