@@ -1,12 +1,32 @@
-import {useRef, useEffect} from 'react'
+import {useRef, useEffect, useState} from 'react'
 import * as d3 from 'd3'
 
 export default function BayesianNet() {
     const testNodes = [
-        {id: "a1", title: "Elasticity", group: "dough", x:  0.5, y: 0.0, normal: 0.5, excess: 0.2, deficient: .3},
-        {id: "a2", title: "Crumb", group: "bread", x: -0.5, y: 0.75, normal: 0.4, excess: 0.3, deficient: .3},
-        {id: "a3", title: "Stickiness", group: "dough", x: -0.5, y: 0.0, normal: 0.1, excess: 0.4, deficient: .5},
-        {id: "a4", title: "Color", group: "bread", x:  0.0, y: -0.75, normal: 0.9, excess: 0.05, deficient: .05}
+        {id: "a1", title: "Elasticity", group: "dough", x:  0.5, y: 0.0, 
+            values: [{label: "Normal", value: 0.5}, 
+                    {label: "Excess", value: 0.3},
+                    {label: "Deficient", value: 0.2}],
+            isEvidence: false
+        },
+        {id: "a2", title: "Crumb", group: "bread", x: -0.5, y: 0.75, 
+            values: [{label: "Normal", value: 0.9}, 
+                    {label: "Excess", value: 0.05},
+                    {label: "Deficient", value: 0.05}],
+            isEvidence: false
+        },
+        {id: "a3", title: "Stickiness", group: "dough", x: -0.5, y: 0.0, 
+            values: [{label: "Normal", value: 0.6}, 
+                    {label: "Excess", value: 0.3},
+                    {label: "Deficient", value: 0.1}],
+            isEvidence: false
+        },
+        {id: "a4", title: "Color", group: "bread", x:  0.0, y: -0.75, 
+            values: [{label: "Normal", value: 0.7}, 
+                    {label: "Excess", value: 0.1},
+                    {label: "Deficient", value: 0.2}],
+            isEvidence: false
+        }
     ]
     const testLinks = [
         {id: "b1", source: "a2", target: "a3", strength: .5},
@@ -14,12 +34,14 @@ export default function BayesianNet() {
         {id: "b3", source: "a1", target: "a4", strength: .8}
     ]
 
-    const EvidencePropagation = ({nodes, links}) => {
+    const EvidencePropagation = ({nodeStarter, links}) => {
+        const [nodes, setNodes] = useState(nodeStarter)
+
         const netRef = useRef()
 
         // basic features of the graph
         const width = window.innerWidth - 300
-        const height = .5 * width
+        const height = .8 * width
         const radius = 35 // node size
         const duration = 750 // ms, for animations
 
@@ -33,6 +55,13 @@ export default function BayesianNet() {
         const svg = d3.create("svg")
             .attr("width", width)
             .attr("height", height)
+
+        // background
+        svg.append('rect')
+            .style('fill', 'transparent')
+            .attr('width', width)
+            .attr('height', height)
+            .on('click', () => setNodes(nodeStarter))
 
         const container = svg.append("g")
             .attr("class", "board")
@@ -62,7 +91,7 @@ export default function BayesianNet() {
             .attr("cx", d => xScale(d.x))
             .attr("cy", d => yScale(d.y))
             .attr("r", radius)
-            .style("fill", d => d.group === "dough" ? "whitesmoke" : "lightgrey")
+            .style("fill", d => d.isEvidence ? "black" : "white")
             .style("stroke", "white")
             .style("stroke-width", "2px")
         
@@ -75,7 +104,7 @@ export default function BayesianNet() {
             .attr("x", d => xScale(d.x))
             .attr("y", d => yScale(d.y))
             .attr("text-anchor", "middle")
-            .style("fill", "black")
+            .style("fill", d => d.isEvidence ? "white" : "black")
             .style("font-size", "12px")
             .attr("dy", 5)
             .text(d => d.title)
@@ -87,17 +116,38 @@ export default function BayesianNet() {
         const arcFunc = d3.arc()
             .innerRadius(radius)
             .outerRadius(radius * 1.5);
+
+        // setEvidence -- currently random propagation
+        const setEvidence = (evidence) => {
+            setNodes(nodes.map(n => {
+                if (n.id === evidence.id) {
+                    return {...evidence, isEvidence: true}
+                } else {
+                    const normal = Math.random()
+                    const excess = Math.random() * (1 - normal)
+                    const deficient = 1 - normal - excess
+                    return {...n, 
+                        values: [{label: "Normal", value: normal}, 
+                                {label: "Excess", value: excess},
+                                {label: "Deficient", value: deficient}],
+                        isEvidence: false}
+                }
+            }))
+        }
         
         // rendering each node
         nodes.forEach(node => {
-            const arcs = pie([
-                { label: 'Normal', value: node.normal },
-                { label: 'Excess', value: node.excess },
-                { label: 'Deficient', value: node.deficient }
-            ]);
+            const arcs = pie(node.values);
 
             const pieContainer = container.append('g')
                 .attr('transform', `translate(${xScale(node.x)}, ${yScale(node.y)})`);
+
+            const propagateEvidence = (event, d) => {
+                const target = d.data.label;
+                // setting 100% for target
+                node.values.forEach(option => option.label === target ? option.value = 1 : option.value = 0)
+                setEvidence(node)
+            }
 
             pieContainer.selectAll('path')
                 .data(arcs)
@@ -113,7 +163,8 @@ export default function BayesianNet() {
                     d3.select(event.target)
                     .attr("fill", colorScale[d.data.label])
                 })
-                .append('title') // delay in rendering??
+                .on('click', propagateEvidence)
+                .append('title') // delay in rendering, nonfixable without original implementation
                     .text(d => `${d.data.label}: ${d.data.value * 100}%`);
         });
 
@@ -140,7 +191,7 @@ export default function BayesianNet() {
         <div>
             <h2> Bayesian Network </h2>
             <hr/>
-            <EvidencePropagation nodes = {testNodes} links = {testLinks}/>
+            <EvidencePropagation nodeStarter = {testNodes} links = {testLinks}/>
         </div>
     )
 }
