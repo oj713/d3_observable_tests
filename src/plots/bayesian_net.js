@@ -153,12 +153,14 @@ export default function BayesianNet() {
                 )
             }
 
-            pieContainer.selectAll('path')
-                .data(arcs)
-                .enter()
-                .append('path')
+            pieContainer.datum(node).selectAll('path')
+                .data(pie)
+                .join('path')
                 .attr('d', arcFunc)
                 .attr('fill', d => colorScale[d.data.label])
+                .each(function(d) { 
+                    console.log(d)
+                    this._current = d; }) // store the initial value
                 .on('mouseover', (event, d) => {
                     d3.select(event.target)
                     .attr("fill", d3.color(colorScale[d.data.label]).darker(1))
@@ -169,7 +171,7 @@ export default function BayesianNet() {
                 })
                 .on('click', propagateEvidence)
                 .append('title') // delay in rendering, nonfixable without original implementation
-                    .text(d => `${d.data.label}: ${d.data.value * 100}%`);
+                    .text(d => `${d.data.label}: ${d.data.value * 100}%`)
         });
 
         // Appending to DOM
@@ -182,6 +184,10 @@ export default function BayesianNet() {
             <div>
                 <h2>Evidence Propagation</h2>
                 <p>At current, random number propagation</p>
+                <ul>
+                    <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
+                    <li><a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Pie Chart Ref</a></li>
+                </ul>
                 <ul>
                     <li><a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></li>
                 </ul>
