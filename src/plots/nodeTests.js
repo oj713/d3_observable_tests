@@ -331,6 +331,73 @@ const PieNode = ({idx, nodeData, color}) => {
     )
 }
 
+// pretty much direct copy paste
+const AnimatedPieNode = () => {
+    const data = d3.tsvParse(`apples\toranges
+    53245\t200
+    28479\t200
+    19697\t200
+    24037\t200
+    40245\t200`, d3.autoType);
+
+    const animRef = useRef();
+
+    const size = 300;
+    const outerRadius = size / 2 - 10;
+    const innerRadius = outerRadius * 0.5;
+    const color = d3.scaleOrdinal(d3.schemeObservable10);
+
+    const svg = d3.create("svg")
+        .attr("width", size)
+        .attr("height", size)
+        .attr("viewBox", [-size/2, -size/2, size, size])
+
+    const arc = d3.arc()
+          .innerRadius(innerRadius)
+          .outerRadius(outerRadius);
+    const pie = d3.pie().sort(null).value((d) => d["apples"]);
+
+    const path = svg.datum(data).selectAll("path")
+        .data(pie)
+      .join("path")
+        .attr("fill", (d, i) => color(i))
+        .attr("d", arc)
+        .each(function(d) { this._current = d; }); // store the initial angles
+
+    function change(value) {
+      pie.value((d) => d[value]); // change the value function
+      path.data(pie); // compute the new angles
+      path.transition().duration(750).attrTween("d", arcTween); // redraw the arcs
+    }
+
+    // Store the displayed angles in _current.
+    // Then, interpolate from _current to the new angles.
+    // During the transition, _current is updated in-place by d3.interpolate.
+    function arcTween(a) {
+      const i = d3.interpolate(this._current, a);
+      this._current = i(0);
+      return (t) => arc(i(t));
+    }
+
+    useEffect(() => {
+      animRef.current.appendChild(svg.node())
+      return () => svg.node().remove()
+    }, [svg])
+
+    return (
+        <>
+        <h3>Animated pie chart</h3>
+        <input type = "radio" name = "dataMode" id = "apples" onClick = {() => change("apples")} defaultChecked/>
+        <label htmlFor = "apples" className = "p-3">Apples</label>
+        <input type = "radio" name = "dataMode" id = "oranges" onClick = {() => change("oranges")}/>
+        <label htmlFor = "oranges" className = "p-3">Oranges</label>
+        <p><a href = "https://observablehq.com/@d3/pie-chart-update">Source</a></p>
+        <div ref = {animRef}></div>
+        </>
+    
+    )
+}
+
 export default function NodeTests() {
     const pieNodes = [[
         { option : "Deficient", value : .3},
@@ -361,6 +428,10 @@ export default function NodeTests() {
             <hr/>
             <p>Inline, repeatable pie chart element</p>
             {pieNodes.map((node, i) => <PieNode idx = {i} nodeData = {node} color = {colorScale}/>)}
+            <hr/>
+            <AnimatedPieNode/>
+            <hr/>
+            <a href = "https://observablehq.com/@cieloazul310/d3-pie-chart-with-simple-animation"> animation idea </a>
         </div>
     )
 }
