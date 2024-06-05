@@ -32,14 +32,37 @@ const EvidencePropagation = ({nodeStarter, links}) => {
     const container = svg.append("g")
         .attr("class", "board")
         .attr("transform", `translate(${width / 2}, ${height / 2})`)
-        
+
+    // legend
+    const legend = svg.append("g")
+        .attr('class', 'legend');
+
+    const legendX = width * .71
+
+    legend.selectAll('circle')
+        .data(Object.entries(colorScale))
+        .enter()
+        .append('circle')
+            .attr('cx', legendX)
+            .attr('cy', (d, i) => height * .1 + i * 25)
+            .attr('r', 10)
+            .attr('fill', d => d[1])
+    legend.selectAll('text')
+        .data(Object.entries(colorScale))
+        .enter()
+        .append('text')
+            .attr('x', legendX + 20)
+            .attr('y', (d, i) => height * .1 + i * 25)
+            .attr('dy', 6)
+            .text(d => d[0])
+
+    // scales for x and y
     const xScale = d3.scaleLinear().domain([-1, 1]).range([-width/2, width/2])
     const yScale = d3.scaleLinear().domain([1, -1]).range([-height/2, height/2])
 
     // Rendering function. allows nodes/links to be updated
     // --------------------------------------------------------------------------------
     const render = ({nodes, links}) => {
-    console.log("Render arguments:",  nodes.map(n => n.isEvidence))
 
     // link data
     container.selectAll("line")
@@ -51,7 +74,7 @@ const EvidencePropagation = ({nodeStarter, links}) => {
     .attr("x2", d => xScale(nodes.find(node => node.id === d.target).x)) // finding x value of target
     .attr("y2", d => yScale(nodes.find(node => node.id === d.target).y))
     .attr("stroke", "grey")
-    .attr("stroke-width", d => 4 * d.strength);
+    .attr("stroke-width", d => 4 * d.strength)
 
     // Node center
     const circles = container.selectAll("circle.node")
@@ -89,8 +112,6 @@ const EvidencePropagation = ({nodeStarter, links}) => {
 
     // setEvidence -- currently random propagation
     const setEvidence = ({evidence, add}) => {
-        console.log(add ? "Adding evidence" : "Setting evidence")
-        console.log("SetEvidence call:", nodes.map(n => n.isEvidence))
         const newNodes = nodes.map(n => {
             if (n.id === evidence.id) {
                 return evidence
