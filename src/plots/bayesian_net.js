@@ -152,11 +152,13 @@ const EvidencePropagation = ({nodeStarter, links}) => {
                 d3.select(event.target)
                 .attr("fill", colorScale[d.data.label])
             })
-            .on('click', propagateEvidence)
+            .on('click', propagateEvidence) // initial Propagate evidence
             .append('title') // delay in rendering, nonfixable without original implementation
                 .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
     
-        updatePies.transition() // update existing pies
+        updatePies
+            .on('click', propagateEvidence) // new propagate evidence to ensure updated nodes information   
+            .transition() // update existing pies
             .duration(duration) 
             .attrTween('d', function(d) {
                 const i = d3.interpolate(this._current, d);
@@ -182,7 +184,8 @@ const EvidencePropagation = ({nodeStarter, links}) => {
     return (
         <div>
             <h2>Evidence Propagation</h2>
-            <p>At current, random number propagation</p>
+            <p>Random number propagation</p>
+            <p>Click on node arc to set evidence. Shift-click to add evidence. Click background to reset.</p>
             <ul>
                 <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
                 <li><a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></li>
