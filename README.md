@@ -1,7 +1,7 @@
 # D3 and Observable Tests
 
-Run the application using `npm start`
+https://d3-observable-tests-omij.netlify.app/
 
-Todo: 
-- fix collapsible sidebar
-- work through Network Observations page
+Test website for d3 and observable libraries. Targeted towards developing visualization skills applicable to interpretable Bayesian Networks.
+
+Run the application using `npm start`
