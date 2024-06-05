@@ -154,7 +154,7 @@ const EvidencePropagation = ({nodeStarter, links}) => {
             })
             .on('click', propagateEvidence)
             .append('title') // delay in rendering, nonfixable without original implementation
-                .text(d => `${d.data.label}: ${d.data.value * 100}%`)
+                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
     
         updatePies.transition() // update existing pies
             .duration(duration) 
@@ -165,7 +165,7 @@ const EvidencePropagation = ({nodeStarter, links}) => {
             })
             .attr('fill', d => colorScale[d.data.label])
             .select('title')
-                .text(d => `${d.data.label}: ${d.data.value * 100}%`)
+                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
 
         updatePies.exit().remove(); // remove old pie segments
     });
