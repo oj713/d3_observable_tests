@@ -1,4 +1,4 @@
-import {useRef, useEffect, useState} from 'react'
+import {useRef, useEffect} from 'react'
 import * as d3 from 'd3'
 
 // Evidence propagation example
@@ -39,6 +39,7 @@ const EvidencePropagation = ({nodeStarter, links}) => {
     // Rendering function. allows nodes/links to be updated
     // --------------------------------------------------------------------------------
     const render = ({nodes, links}) => {
+    console.log("Render arguments:",  nodes.map(n => n.isEvidence))
 
     // link data
     container.selectAll("line")
@@ -87,10 +88,14 @@ const EvidencePropagation = ({nodeStarter, links}) => {
         .outerRadius(radius * 1.5);
 
     // setEvidence -- currently random propagation
-    const setEvidence = (evidence) => {
+    const setEvidence = ({evidence, add}) => {
+        console.log(add ? "Adding evidence" : "Setting evidence")
+        console.log("SetEvidence call:", nodes.map(n => n.isEvidence))
         const newNodes = nodes.map(n => {
             if (n.id === evidence.id) {
                 return evidence
+            } else if (add && n.isEvidence){
+                return n
             } else {
                 const normal = Math.random()
                 const excess = Math.random() * (1 - normal)
@@ -121,13 +126,14 @@ const EvidencePropagation = ({nodeStarter, links}) => {
         const propagateEvidence = (event, d) => {
             const target = d.data.label;
             // setting 100% for target
-            setEvidence(
-                {...node, 
+            setEvidence({
+                evidence: {...node, 
                     values: node.values.map(option => 
                         option.label === target ? {...option, value: 1} : {...option, value: 0}),
                     isEvidence: true
-                }
-            )
+                },
+                add: event.shiftKey
+            })
         }
 
         const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
