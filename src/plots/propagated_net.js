@@ -2,7 +2,7 @@ import {useRef, useEffect} from 'react'
 import * as d3 from 'd3'
 
 // Evidence propagation example
-const EvidencePropagation = ({nodeStarter, links}) => {
+const PropagatedNet = ({nodeStarter, links}) => {
     const netRef = useRef()
 
     // basic features of the graph
@@ -204,8 +204,8 @@ const EvidencePropagation = ({nodeStarter, links}) => {
 
     return (
         <div>
-            <h2>Evidence Propagation</h2>
-            <p>Random number propagation</p>
+            <h2>Propagated Network</h2>
+            <p> currently random propagation </p>
             <p>Click on node arc to set evidence. Shift-click to add evidence. Click background to reset.</p>
             <ul>
                 <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
@@ -251,9 +251,9 @@ export default function BayesianNet() {
 
     return (
         <div>
-            <h2> Random Bayesian Network </h2>
+            <h2> Propagated Bayesian Network </h2>
             <hr/>
-            <EvidencePropagation nodeStarter = {testNodes} links = {testLinks}/>
+            <PropagatedNet nodeStarter = {testNodes} links = {testLinks}/>
         </div>
     )
 }

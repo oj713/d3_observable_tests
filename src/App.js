@@ -7,6 +7,7 @@ import GeneralPage from './plots/general.js';
 import NetworksGen from './plots/networksGen.js';
 import NodeTests from './plots/nodeTests.js';
 import BayesianNet from './plots/bayesian_net.js';
+import PropagatedNet from './plots/propagated_net.js';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Route path="/networksgen" element={<NetworksGen/>} />
             <Route path="/bayesian-nodes" element={<NodeTests/>} />
             <Route path="/bayesian-net" element={<BayesianNet/>} />
+            <Route path="/propagated-net" element={<PropagatedNet/>} />
           </Routes>
         </div>
       </div>
