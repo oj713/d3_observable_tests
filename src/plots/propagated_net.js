@@ -1,4 +1,6 @@
-import {useRef, useEffect} from 'react'
+import {useRef, useEffect, useState} from 'react'
+import {getNetwork} from '../redux_stuff/network-services.js'
+import {parseNodes, parseLinks} from '../redux_stuff/network-parser.js'
 import * as d3 from 'd3'
 
 // Evidence propagation example
@@ -7,7 +9,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     // basic features of the graph
     const width = window.innerWidth - 300
-    const height = Math.min(.8 * width, 600)
+    const height = 1300
     const radius = 35 // node size
     const duration = 750 // ms, for animations
 
@@ -37,14 +39,14 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const legend = svg.append("g")
         .attr('class', 'legend');
 
-    const legendX = width * .71
+    const legendX = width * .8
 
     legend.selectAll('circle')
         .data(Object.entries(colorScale))
         .enter()
         .append('circle')
             .attr('cx', legendX)
-            .attr('cy', (d, i) => height * .1 + i * 25)
+            .attr('cy', (d, i) => height * .15 + i * 25)
             .attr('r', 10)
             .attr('fill', d => d[1])
     legend.selectAll('text')
@@ -52,7 +54,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .enter()
         .append('text')
             .attr('x', legendX + 20)
-            .attr('y', (d, i) => height * .1 + i * 25)
+            .attr('y', (d, i) => height * .15 + i * 25)
             .attr('dy', 6)
             .text(d => d[0])
 
@@ -217,43 +219,27 @@ const PropagatedNet = ({nodeStarter, links}) => {
 }
 
 export default function BayesianNet() {
-    const testNodes = [
-        {id: "a1", title: "Elasticity", group: "dough", x:  0.5, y: 0.0, 
-            values: [{label: "Normal", value: 0.5}, 
-                    {label: "Excess", value: 0.3},
-                    {label: "Deficient", value: 0.2}],
-            isEvidence: false
-        },
-        {id: "a2", title: "Crumb", group: "bread", x: -0.5, y: 0.75, 
-            values: [{label: "Normal", value: 0.9}, 
-                    {label: "Excess", value: 0.05},
-                    {label: "Deficient", value: 0.05}],
-            isEvidence: false
-        },
-        {id: "a3", title: "Stickiness", group: "dough", x: -0.5, y: 0.0, 
-            values: [{label: "Normal", value: 0.6}, 
-                    {label: "Excess", value: 0.3},
-                    {label: "Deficient", value: 0.1}],
-            isEvidence: false
-        },
-        {id: "a4", title: "Color", group: "bread", x:  0.0, y: -0.75, 
-            values: [{label: "Normal", value: 0.7}, 
-                    {label: "Excess", value: 0.1},
-                    {label: "Deficient", value: 0.2}],
-            isEvidence: false
-        }
-    ]
-    const testLinks = [
-        {id: "b1", source: "a2", target: "a3", strength: .5},
-        {id: "b2", source: "a3", target: "a4", strength: .2},
-        {id: "b3", source: "a1", target: "a4", strength: .8}
-    ]
+    const [nodeStarter, setNodeStarter] = useState([])
+    const [links, setLinks] = useState([])
+
+    // testing retrieval from backend
+    // the backend shoulllddddddd be the one formatting the data into what we need
+    // but i'm gonna do it in the frontend for now
+    useEffect(() => {
+        getNetwork().then(response => {
+            setNodeStarter(parseNodes(response))
+            setLinks(parseLinks(response))
+        })
+        .catch(error => {
+            console.log(error)
+        })
+    }, [])
 
     return (
         <div>
             <h2> Propagated Bayesian Network </h2>
             <hr/>
-            <PropagatedNet nodeStarter = {testNodes} links = {testLinks}/>
+            <PropagatedNet nodeStarter = {nodeStarter} links = {links}/>
         </div>
     )
 }
