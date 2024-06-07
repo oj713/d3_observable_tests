@@ -1,15 +1,14 @@
-import {useRef, useEffect, useState} from 'react'
-import {getNetwork} from '../redux_stuff/network-services.js'
-import {parseNodes, parseLinks} from '../redux_stuff/network-parser.js'
+import {useRef, useEffect} from 'react'
 import * as d3 from 'd3'
+import {exampleNodes, exampleLinks} from '../BN_tools/example_BN.js'
 
 // Evidence propagation example
-const PropagatedNet = ({nodeStarter, links}) => {
+const EvidencePropagation = ({nodeStarter, links}) => {
     const netRef = useRef()
 
     // basic features of the graph
     const width = window.innerWidth - 300
-    const height = 1300
+    const height = Math.min(.8 * width, 600)
     const radius = 35 // node size
     const duration = 750 // ms, for animations
 
@@ -39,14 +38,14 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const legend = svg.append("g")
         .attr('class', 'legend');
 
-    const legendX = width * .8
+    const legendX = width * .71
 
     legend.selectAll('circle')
         .data(Object.entries(colorScale))
         .enter()
         .append('circle')
             .attr('cx', legendX)
-            .attr('cy', (d, i) => height * .15 + i * 25)
+            .attr('cy', (d, i) => height * .1 + i * 25)
             .attr('r', 10)
             .attr('fill', d => d[1])
     legend.selectAll('text')
@@ -54,7 +53,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .enter()
         .append('text')
             .attr('x', legendX + 20)
-            .attr('y', (d, i) => height * .15 + i * 25)
+            .attr('y', (d, i) => height * .1 + i * 25)
             .attr('dy', 6)
             .text(d => d[0])
 
@@ -206,8 +205,8 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     return (
         <div>
-            <h2>Propagated Network</h2>
-            <p> currently random propagation </p>
+            <h2>Evidence Propagation</h2>
+            <p>Random number propagation</p>
             <p>Click on node arc to set evidence. Shift-click to add evidence. Click background to reset.</p>
             <ul>
                 <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
@@ -219,27 +218,11 @@ const PropagatedNet = ({nodeStarter, links}) => {
 }
 
 export default function BayesianNet() {
-    const [nodeStarter, setNodeStarter] = useState([])
-    const [links, setLinks] = useState([])
-
-    // testing retrieval from backend
-    // the backend shoulllddddddd be the one formatting the data into what we need
-    // but i'm gonna do it in the frontend for now
-    useEffect(() => {
-        getNetwork().then(response => {
-            setNodeStarter(parseNodes(response.nodes))
-            setLinks(parseLinks(response.links))
-        })
-        .catch(error => {
-            console.log(error)
-        })
-    }, [])
-
     return (
         <div>
-            <h2> Propagated Bayesian Network </h2>
+            <h2> Random Bayesian Network </h2>
             <hr/>
-            <PropagatedNet nodeStarter = {nodeStarter} links = {links}/>
+            <EvidencePropagation nodeStarter = {exampleNodes} links = {exampleLinks}/>
         </div>
     )
 }
