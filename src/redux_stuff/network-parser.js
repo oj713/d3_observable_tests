@@ -36,14 +36,10 @@ const defaultLinks = [
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
     'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
 
-export const parseNodes = (data) => {
-    const nodes = data.filter(entry => !entry.data.source).map(node => {
-        const [group, title] = node.data.label.split("_")
-        // providing random values, x/y for now. just to test.
+export const parseNodes = (nodesRaw) => {
+    const nodes = nodesRaw.map(node => {
         return {
-            id: node.data.id,
-            title: title,
-            group: group,
+            ...node,
             x: 0,
             y: 0,
             values: [{label: "Normal", value: 0.5}, 
@@ -64,22 +60,16 @@ export const parseNodes = (data) => {
         })
     })
 
-    console.log(nodes)
-
     return (
         nodes || defaultNodes
     )
 }
 
-export const parseLinks = (data) => {
-    const links = data.filter(entry => entry.data.source).map(link => { return {
-        id: link.data.id,
-        source: link.data.source,
-        target: link.data.target,
+export const parseLinks = (linksRaw) => {
+    const links = linksRaw.map(link => { return {
+        ...link,
         strength: .5
     }})
-
-    console.log(links)
 
     return (
         links || defaultLinks

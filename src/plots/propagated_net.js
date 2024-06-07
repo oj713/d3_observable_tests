@@ -227,8 +227,8 @@ export default function BayesianNet() {
     // but i'm gonna do it in the frontend for now
     useEffect(() => {
         getNetwork().then(response => {
-            setNodeStarter(parseNodes(response))
-            setLinks(parseLinks(response))
+            setNodeStarter(parseNodes(response.nodes))
+            setLinks(parseLinks(response.links))
         })
         .catch(error => {
             console.log(error)
