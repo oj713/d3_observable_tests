@@ -2,16 +2,21 @@ import {useRef, useEffect, useState} from 'react'
 import {getNetwork} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
 import {exampleNodes, exampleLinks} from '../BN_tools/example_BN.js'
+import {dagreLayout} from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
 // Evidence propagation example
 const PropagatedNet = ({nodeStarter, links}) => {
     const netRef = useRef()
 
+    // Layout computation
+    const layout = dagreLayout(nodeStarter, links)
+    console.log("layout", layout)
+
     // basic features of the graph
     const width = window.innerWidth - 300
     const height = 1300
-    const radius = 35 // node size
+    const radius = 34 // node size
     const duration = 750 // ms, for animations
 
     const colorScale = {
@@ -228,7 +233,6 @@ export default function BayesianNet() {
     // but i'm gonna do it in the frontend for now
     useEffect(() => {
         getNetwork().then(response => {
-            console.log(response)
             setNodeStarter(parseNodes(response.nodes))
             setLinks(parseLinks(response.links))
         })

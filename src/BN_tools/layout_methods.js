@@ -1,3 +1,4 @@
+import * as dg from '@dagrejs/dagre';
 
 // Global hierarchy order
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
@@ -18,7 +19,22 @@ export const basicLayout = (nodes) => {
     return nodes
 }
 
-export const SugiyamaLayout = (nodes, links) => {
-    // Todo - implement Sugiyama layout
-    return nodes
+// using dagre library
+export const dagreLayout = (nodes, links) => {
+    const g = new dg.graphlib.Graph() 
+    // Set an object for the graph label
+    g.setGraph({});
+    // Default to assigning a new object as a label for each new edge.
+    g.setDefaultEdgeLabel(function() { return {}; });
+
+    nodes.forEach(node => {
+        g.setNode(node.id, {label: node.title, width: 102, height: 102})
+    })
+    links.forEach(link => {
+        g.setEdge(link.source, link.target)
+    })
+
+    dg.layout(g)
+
+    return g
 }
