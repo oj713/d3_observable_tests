@@ -6,9 +6,6 @@ export const parseNodes = (nodesRaw) => {
             ...node,
             x: 0,
             y: 0,
-            values: [{label: "Normal", value: 0.5}, 
-                    {label: "Excess", value: 0.3},
-                    {label: "Deficient", value: 0.2}],
             isEvidence: false
         }
     })

@@ -15,9 +15,15 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const duration = 750 // ms, for animations
 
     const colorScale = {
-        "Deficient": "#75B9BE",
-        "Normal": "#FCDE9C",
-        "Excess": "#F15946"
+        "insufficient": "#75B9BE",
+        "normal": "#FCDE9C",
+        "excess": "#F15946",
+        "average": "#FCDE9C",
+        "elevated": "#F15946",
+        "weak": "#75B9BE",
+        "Deficient": '#75B9BE',
+        'Normal': '#FCDE9C',
+        'Excess': '#F15946'
     }
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
@@ -121,13 +127,13 @@ const PropagatedNet = ({nodeStarter, links}) => {
             } else if (add && n.isEvidence){
                 return n
             } else {
-                const normal = Math.random()
-                const excess = Math.random() * (1 - normal)
-                const deficient = 1 - normal - excess
+                const ranArray = Array.from({length: n.values.length}, () => Math.random())
+                const sum = ranArray.reduce((a, b) => a + b, 0)
+                
                 return {...n, 
-                    values: [{label: "Normal", value: normal}, 
-                            {label: "Excess", value: excess},
-                            {label: "Deficient", value: deficient}],
+                    values: n.values.map((option, i) => {
+                        return {...option, value: ranArray[i] / sum}
+                    }),
                     isEvidence: false}
             }
         })
@@ -145,7 +151,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
         
     // rendering each node
     nodes.forEach(node => {
-        const arcs = pie(node.values);
+        const arcs = pie(node.values)
 
         const propagateEvidence = (event, d) => {
             const target = d.data.label;
@@ -228,7 +234,6 @@ export default function BayesianNet() {
     // but i'm gonna do it in the frontend for now
     useEffect(() => {
         getNetwork().then(response => {
-            console.log(response)
             setNodeStarter(parseNodes(response.nodes))
             setLinks(parseLinks(response.links))
         })
