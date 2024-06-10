@@ -9,14 +9,15 @@ import * as d3 from 'd3'
 const PropagatedNet = ({nodeStarter, links}) => {
     const netRef = useRef()
 
-    // Layout computation
-    const layout = dagreLayout(nodeStarter, links)
+    // Layout computation. Could honestly pass this in....
+    const nodeSize = 102
+    const layout = dagreLayout(nodeStarter, links, nodeSize)
     console.log("layout", layout)
 
     // basic features of the graph
-    const width = window.innerWidth - 300
-    const height = 1300
-    const radius = 34 // node size
+    const width = layout._label.width
+    const height = layout._label.height
+    const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
 
     const colorScale = {

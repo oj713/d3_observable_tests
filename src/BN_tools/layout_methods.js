@@ -20,7 +20,7 @@ export const basicLayout = (nodes) => {
 }
 
 // using dagre library
-export const dagreLayout = (nodes, links) => {
+export const dagreLayout = (nodes, links, nodeSize) => {
     const g = new dg.graphlib.Graph() 
     // Set an object for the graph label
     g.setGraph({});
@@ -28,7 +28,10 @@ export const dagreLayout = (nodes, links) => {
     g.setDefaultEdgeLabel(function() { return {}; });
 
     nodes.forEach(node => {
-        g.setNode(node.id, {label: node.title, width: 102, height: 102})
+        g.setNode(node.id, {
+            label: node.title, 
+            group: node.group,
+            width: nodeSize, height: nodeSize})
     })
     links.forEach(link => {
         g.setEdge(link.source, link.target)
