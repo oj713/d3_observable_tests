@@ -7,3 +7,8 @@ export const getNetwork = async () => {
     const response = await axios.get(`${API_URL}/network?format=d3_tests`);
     return response.data;
 }
+
+export const propagateEvidence = async (evidence) => {
+    const response = await axios.patch(`${API_URL}/network/inference`, evidence)
+    return response.data
+}
