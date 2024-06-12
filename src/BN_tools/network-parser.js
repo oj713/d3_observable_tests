@@ -10,8 +10,6 @@ export const parseNodes = (nodesRaw) => {
         }
     })
 
-    nodes = basicLayout(nodes)
-
     return nodes
 }
 

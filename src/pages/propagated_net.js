@@ -9,14 +9,12 @@ import * as d3 from 'd3'
 const PropagatedNet = ({nodeStarter, links}) => {
     const netRef = useRef()
 
-    // Layout computation. Could honestly pass this in....
+    // Layout computation. Replace for different layouts.
     const nodeSize = 102
     const layout = dagreLayout(nodeStarter, links, nodeSize)
-    console.log("layout", layout)
+    const {nodesBase, width, height} = layout
 
     // basic features of the graph
-    const width = layout._label.width
-    const height = layout._label.height
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
 
@@ -38,6 +36,14 @@ const PropagatedNet = ({nodeStarter, links}) => {
         "Insufficient/Weak": "#75B9BE"
     }
 
+    const colorScheme = d3.scaleOrdinal(d3.schemePastel2)
+    const getFillColor = (group) => {
+        const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
+            'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
+        const groupNum = groupHierarchy.indexOf(group)
+        return colorScheme(groupNum)
+    }
+
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const svg = d3.create("svg")
         .attr("width", width)
@@ -48,11 +54,10 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .style('fill', 'transparent')
         .attr('width', width)
         .attr('height', height)
-        .on('click', () => render({nodes: nodeStarter, links}))
+        .on('click', () => render({nodes: nodesBase, links}))
 
     const container = svg.append("g")
         .attr("class", "board")
-        .attr("transform", `translate(${width / 2}, ${height / 2})`)
 
     // legend
     const legend = svg.append("g")
@@ -77,10 +82,6 @@ const PropagatedNet = ({nodeStarter, links}) => {
             .attr('dy', 6)
             .text(d => d[0])
 
-    // scales for x and y
-    const xScale = d3.scaleLinear().domain([-1, 1]).range([-width/2, width/2])
-    const yScale = d3.scaleLinear().domain([1, -1]).range([-height/2, height/2])
-
     // Rendering function. allows nodes/links to be updated
     // --------------------------------------------------------------------------------
     const render = ({nodes, links}) => {
@@ -90,10 +91,10 @@ const PropagatedNet = ({nodeStarter, links}) => {
     .data(links, d => d.id)
     .enter()
     .append("line")
-    .attr("x1", d => xScale(nodes.find(node => node.id === d.source).x)) // finding x value of source
-    .attr("y1", d => yScale(nodes.find(node => node.id === d.source).y))
-    .attr("x2", d => xScale(nodes.find(node => node.id === d.target).x)) // finding x value of target
-    .attr("y2", d => yScale(nodes.find(node => node.id === d.target).y))
+    .attr("x1", d => nodes.find(node => node.id === d.source).x) // finding x value of source
+    .attr("y1", d => nodes.find(node => node.id === d.source).y)
+    .attr("x2", d => nodes.find(node => node.id === d.target).x) // finding x value of target
+    .attr("y2", d => nodes.find(node => node.id === d.target).y)
     .attr("stroke", "grey")
     .attr("stroke-width", d => 4 * d.strength)
 
@@ -103,10 +104,11 @@ const PropagatedNet = ({nodeStarter, links}) => {
         
     circles.join("circle")
         .attr("class", "node")
-        .attr("cx", d => xScale(d.x))
-        .attr("cy", d => yScale(d.y))
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
         .attr("r", radius)
-        .style("fill", d => d.isEvidence ? "black" : "white")
+        // color based on group
+        .style("fill", d => d.isEvidence ? "black" : getFillColor(d.group))
         .style("stroke", "white")
         .style("stroke-width", "2px")
         
@@ -115,8 +117,8 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     nodeTitles.join("text")
         .attr("class", "node-title")
-        .attr("x", d => xScale(d.x))
-        .attr("y", d => yScale(d.y))
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
         .attr("text-anchor", "middle")
         .style("fill", d => d.isEvidence ? "white" : "black")
         .style("font-size", "12px")
@@ -140,9 +142,11 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
             // update nodes with new probabilities
             const newNodes = nodes.map(node => {
+                const isEvidence = Object.keys(evidence).includes(node.id)
                 return {
                     ...node,
-                    values: newProbabilities[node.id]
+                    values: newProbabilities[node.id],
+                    isEvidence: isEvidence
                 }
             })
 
@@ -157,7 +161,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .data(nodes, d => d.id)
         .join('g')
         .attr('class', 'pie-node')
-        .attr('transform', d => `translate(${xScale(d.x)}, ${yScale(d.y)})`)
+        .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
         
     // rendering each node
@@ -210,7 +214,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
     });
     } 
 
-    render({nodes: nodeStarter, links})
+    render({nodes: nodesBase, links})
 
     // Appending to DOM
     useEffect(() => {
