@@ -1,5 +1,3 @@
-import {basicLayout} from './layout_methods'
-
 export const parseNodes = (nodesRaw) => {
     let nodes = nodesRaw.map(node => {
         return {

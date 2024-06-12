@@ -1,7 +1,6 @@
 import {useRef, useEffect, useState} from 'react'
 import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
-import {exampleNodes, exampleLinks} from '../BN_tools/example_BN.js'
 import {dagreLayout} from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
@@ -237,8 +236,8 @@ const PropagatedNet = ({nodeStarter, links}) => {
 }
 
 export default function BayesianNet() {
-    const [nodeStarter, setNodeStarter] = useState(exampleNodes)
-    const [links, setLinks] = useState(exampleLinks)
+    const [nodeStarter, setNodeStarter] = useState([])
+    const [links, setLinks] = useState([])
 
     // testing retrieval from backend
     // the backend shoulllddddddd be the one formatting the data into what we need
