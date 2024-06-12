@@ -1,5 +1,5 @@
 import {useRef, useEffect, useState} from 'react'
-import {getNetwork} from '../redux_stuff/network-services.js'
+import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
 import {exampleNodes, exampleLinks} from '../BN_tools/example_BN.js'
 import {dagreLayout} from '../BN_tools/layout_methods.js'
@@ -21,9 +21,21 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const duration = 750 // ms, for animations
 
     const colorScale = {
-        "Deficient": "#75B9BE",
-        "Normal": "#FCDE9C",
-        "Excess": "#F15946"
+        "insufficient": "#75B9BE",
+        "normal": "#FCDE9C",
+        "excess": "#F15946",
+        "average": "#FCDE9C",
+        "elevated": "#F15946",
+        "weak": "#75B9BE",
+        "Deficient": '#75B9BE',
+        'Normal': '#FCDE9C',
+        'Excess': '#F15946'
+    }
+
+    const colorLegendScale = {
+        "Excess/Elevated": "#F15946",
+        "Normal/Average": "#FCDE9C",
+        "Insufficient/Weak": "#75B9BE"
     }
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
@@ -49,7 +61,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const legendX = width * .8
 
     legend.selectAll('circle')
-        .data(Object.entries(colorScale))
+        .data(Object.entries(colorLegendScale))
         .enter()
         .append('circle')
             .attr('cx', legendX)
@@ -57,7 +69,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
             .attr('r', 10)
             .attr('fill', d => d[1])
     legend.selectAll('text')
-        .data(Object.entries(colorScale))
+        .data(Object.entries(colorLegendScale))
         .enter()
         .append('text')
             .attr('x', legendX + 20)
@@ -119,27 +131,26 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .innerRadius(radius)
         .outerRadius(radius * 1.5);
 
-    // setEvidence -- currently random propagation
-    const setEvidence = ({evidence, add}) => {
-        const newNodes = nodes.map(n => {
-            if (n.id === evidence.id) {
-                return evidence
-            } else if (add && n.isEvidence){
-                return n
-            } else {
-                const normal = Math.random()
-                const excess = Math.random() * (1 - normal)
-                const deficient = 1 - normal - excess
-                return {...n, 
-                    values: [{label: "Normal", value: normal}, 
-                            {label: "Excess", value: excess},
-                            {label: "Deficient", value: deficient}],
-                    isEvidence: false}
-            }
-        })
+    // sendEvidence -- currently random propagation
+    const sendEvidence = async({evidence, add}) => {
+        try {
+            // await response from backend
+            const newProbabilities = await propagateEvidence({evidence: evidence})
+            console.log(newProbabilities)
 
-        // re-rendering
-        render({nodes: newNodes, links})
+            // update nodes with new probabilities
+            const newNodes = nodes.map(node => {
+                return {
+                    ...node,
+                    values: newProbabilities[node.id]
+                }
+            })
+
+            // re-render with new nodes
+            render({nodes: newNodes, links})
+        } catch (error) {
+            alert('Error propagating evidence: ' + error.message)
+        }
     }
 
     const pieContainer = container.selectAll('g.pie-node')
@@ -151,19 +162,15 @@ const PropagatedNet = ({nodeStarter, links}) => {
         
     // rendering each node
     nodes.forEach(node => {
-        const arcs = pie(node.values);
+        const arcs = pie(node.values)
 
-        const propagateEvidence = (event, d) => {
-            const target = d.data.label;
-            // setting 100% for target
-            setEvidence({
-                evidence: {...node, 
-                    values: node.values.map(option => 
-                        option.label === target ? {...option, value: 1} : {...option, value: 0}),
-                    isEvidence: true
-                },
-                add: event.shiftKey
-            })
+        const setEvidence = (event, d) => {
+            const newEvidence = {[node.id]: d.data.label}
+
+            // temporarily tearing down shift + click functionality. TODO: bring this back.
+            // const add = event.shiftKey
+
+            sendEvidence({evidence: newEvidence, add: false})
         }
 
         const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
@@ -182,12 +189,12 @@ const PropagatedNet = ({nodeStarter, links}) => {
                 d3.select(event.target)
                 .attr("fill", colorScale[d.data.label])
             })
-            .on('click', propagateEvidence) // initial Propagate evidence
+            .on('click', setEvidence) // initial Propagate evidence
             .append('title') // delay in rendering, nonfixable without original implementation
                 .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
     
         updatePies
-            .on('click', propagateEvidence) // new propagate evidence to ensure updated nodes information   
+            .on('click', setEvidence) // new propagate evidence to ensure updated nodes information   
             .transition() // update existing pies
             .duration(duration) 
             .attrTween('d', function(d) {
