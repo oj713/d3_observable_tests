@@ -45,8 +45,10 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const svg = d3.create("svg")
-        .attr("width", width)
-        .attr("height", height)
+        // .attr("width", width)
+        // .attr("height", height)
+        .attr("viewBox", [0, 0, width, height])
+        .style("border", "1px solid black")
 
     // background
     svg.append('rect')
@@ -64,22 +66,40 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     const legendX = width * .8
 
+    legend.selectAll('background')
+        .data([1])
+        .enter()
+        .append('rect')
+            .attr('x', legendX - 40)
+            .attr('y', height * .05 + 10)
+            .attr('width', 300)
+            .attr('height', 180)
+            .attr('fill', 'white')
+            .attr('stroke', 'black')
     legend.selectAll('circle')
         .data(Object.entries(colorLegendScale))
         .enter()
         .append('circle')
             .attr('cx', legendX)
-            .attr('cy', (d, i) => height * .15 + i * 25)
-            .attr('r', 10)
+            .attr('cy', (d, i) => height * .07 + i * 50)
+            .attr('r', 20)
             .attr('fill', d => d[1])
     legend.selectAll('text')
         .data(Object.entries(colorLegendScale))
         .enter()
         .append('text')
-            .attr('x', legendX + 20)
-            .attr('y', (d, i) => height * .15 + i * 25)
+            .attr('x', legendX + 30)
+            .attr('y', (d, i) => height * .071 + i * 50)
             .attr('dy', 6)
             .text(d => d[0])
+            .attr('font-size', '25px')
+
+    svg.call(d3.zoom()
+        .extent([[0, 0], [width, height]])
+        .scaleExtent([1, 8])
+        .on("zoom", function(event) {
+            container.attr("transform", event.transform)
+        }))
 
     // Rendering function. allows nodes/links to be updated
     // --------------------------------------------------------------------------------
