@@ -1,6 +1,6 @@
 import {Link, useLocation} from 'react-router-dom';
 import './nav_sidebar.css';
-const NavSidebar = () => {
+const NavSidebar = ({isCollapsed, toggleSidebar}) => {
 
     const {pathname} = useLocation();
     let active = pathname.split("/")[1];
@@ -15,7 +15,13 @@ const NavSidebar = () => {
     ]
 
     return (
-    <div className = "jasper col sidebar nopad">
+    <div className = {`jasper col sidebar nopad ${isCollapsed ? "collapsed" : "normal"}`}>
+        <div className = "d-flex justify-content-center">
+            <button className = "toggle-button" onClick = {toggleSidebar}>
+                {isCollapsed ? ">>" : "<<"}
+            </button>
+        </div>
+        {!isCollapsed && 
         <ul className = "list-group list-group-flush">
             {tabs.map(tab => 
                 <Link key = {tab.name} 
@@ -25,6 +31,7 @@ const NavSidebar = () => {
                 </Link>
             )}
         </ul>
+        }
     </div>
     )
 }

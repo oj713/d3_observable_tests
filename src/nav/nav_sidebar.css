@@ -1,11 +1,18 @@
 .sidebar {
-  width: var(--sidebar-width);
   position:fixed;
   left: 0;
   bottom:0;
   top:0;
   z-index: 1000;
   display:block;
+}
+
+.collapsed {
+  width: var(--collapsed-sidebar-width);
+}
+
+.normal {
+  width: var(--sidebar-width);
 }
 
 /* will fix this later */
@@ -31,4 +38,11 @@
 .sidebar a, .sidebar a:hover {
   color: white;
   text-decoration: none;
+}
+
+.sidebar button {
+  background-color: transparent;
+  border: none;
+  color: white;
+  font-weight: bold;
 }
