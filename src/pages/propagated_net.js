@@ -1,7 +1,7 @@
 import {useRef, useEffect, useState} from 'react'
 import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
-import {dagreLayout} from '../BN_tools/layout_methods.js'
+import {dagreLayout, sugiyamaLayout} from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
 // Evidence propagation example
@@ -12,6 +12,9 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const nodeSize = 102
     const layout = dagreLayout(nodeStarter, links, nodeSize)
     const {nodesBase, width, height} = layout
+
+    // const sugLayout = sugiyamaLayout(nodeStarter, links, nodeSize)
+    // console.log("Sugiyama layout object", sugLayout)
 
     // basic features of the graph
     const radius = nodeSize/3 // node size
@@ -229,6 +232,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
             <ul>
                 <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
                 <li><a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></li>
+                <li><a href = "https://codepen.io/brinkbot/pen/oNQwNRv">Sugiyama Layout Example using d3-dag</a></li>
             </ul>
             <div ref = {netRef}></div>
         </div>

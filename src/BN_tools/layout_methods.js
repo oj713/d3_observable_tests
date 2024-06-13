@@ -1,10 +1,13 @@
 import * as dg from '@dagrejs/dagre';
+import * as d3 from 'd3';
+import * as d3dag from 'd3-dag';
 
 // Global hierarchy order
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
     'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
 
-    
+
+// Basic layout. Evenly spaces nodes within a group on y-layers. No edge crossing minimization.
 export const basicLayout = (nodes) => {
     /** Layout is assuming XScale, YScale of -1 to 1, centered position. Fix this later.
      * const container = svg.append("g")
@@ -29,7 +32,7 @@ export const basicLayout = (nodes) => {
     return nodes
 }
 
-// using dagre library
+// Dagre layout library. Supports subgraphs and edge crossing minimization. Rather spaced out. 
 export const dagreLayout = (nodes, links, nodeSize) => {
     const g = new dg.graphlib.Graph({compound: true}) 
 
@@ -74,3 +77,40 @@ export const dagreLayout = (nodes, links, nodeSize) => {
 
     return layoutObj
 }
+
+// Sugiyama layout library.
+export const sugiyamaLayout = (nodes, links, nodeSize) => {
+    // create DAG data structure from nodes and links.
+    const dag_data = nodes.map(node => ({id: node.id, parentIds: []}))
+    links.forEach(link => {
+        const targetNode = dag_data.find(node => node.id === link.target)
+        targetNode.parentIds.push(link.source)
+    })
+    const builder = d3dag.graphStratify();
+    const dagGraph = builder(dag_data);
+
+    // layout
+    const layout = d3dag
+        .sugiyama()
+        .layering(d3dag.layeringLongestPath())
+        .decross(d3dag.decrossOpt())
+        .coord(d3dag.coordSimplex())
+        .nodeSize([nodeSize, nodeSize])
+        .gap([nodeSize/2, nodeSize/2])
+        // // truncates edge to render arrows well
+        .tweaks([d3dag.tweakShape([nodeSize, nodeSize], d3dag.shapeEllipse)])
+
+    const layoutObj = layout(dagGraph);
+
+    nodes.forEach(node => {
+        const layoutNode = dagGraph.node(node.id)
+        console.log(layoutNode)
+        // node.x = layoutNode.x
+        // node.y = layoutNode.y
+    })
+
+    layoutObj.nodesBase = nodes
+
+    return layoutObj
+}
+
