@@ -242,16 +242,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
     }, [svg])
 
     return (
-        <div>
-            <h2>Propagated Network</h2>
-            <p> currently random propagation </p>
-            <p>Click on node arc to set evidence. Shift-click to add evidence. Click background to reset.</p>
-            <ul>
-                <li><a href = "https://observablehq.com/@d3/pie-chart-update">Animation Ref</a></li>
-                <li><a href = "https://observablehq.com/@infographeo/bayesian-network-visualization">Evidence Propagation</a></li>
-            </ul>
-            <div ref = {netRef}></div>
-        </div>
+        <div ref = {netRef}></div>
     )
 }
 
