@@ -8,6 +8,7 @@
   --darker-blue: rgb(54, 95, 65);
 
   --sidebar-width: 200px;
+  --collapsed-sidebar-width: 40px;
 }
 
 .jasper {
@@ -49,10 +50,16 @@ code {
 .bump-left {
   margin-left: var(--sidebar-width);
 }
+.bump-collapsed {
+  margin-left: var(--collapsed-sidebar-width);
+}
 
 /* will fix this later */
 @media (max-width: 600px) {
   .bump-left {
+    margin-left: 0;
+  }
+  .bump-collapsed {
     margin-left: 0;
   }
 }

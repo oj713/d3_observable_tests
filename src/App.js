@@ -1,4 +1,5 @@
 import './App.css';
+import {useState} from 'react';
 // backend
 import {Provider} from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -19,12 +20,18 @@ const store = configureStore({
 })
 
 function App() {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  }
+
   return (
     <Provider store = {store}>
       <BrowserRouter>
         <div className="App container-fluid">
-          <NavSidebar/>
-          <div className="bump-left">
+          <NavSidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar}/>
+          <div className={`${isCollapsed ? 'bump-collapsed' : 'bump-left'}`}>
             <Routes>
               <Route path="/" element={<NotesBox/>} />
               <Route path="/general" element={<GeneralPage/>} />
