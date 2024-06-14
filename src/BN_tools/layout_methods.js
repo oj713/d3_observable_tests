@@ -1,11 +1,23 @@
 import * as dg from '@dagrejs/dagre';
-import * as d3 from 'd3';
 import * as d3dag from 'd3-dag';
 
 // Global hierarchy order
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
     'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
 
+
+/* Old link code. 
+container.selectAll("line")
+.data(links, d => d.id)
+.enter()
+.append("line")
+.attr("x1", d => nodes.find(node => node.id === d.source).x) // finding x value of source
+.attr("y1", d => nodes.find(node => node.id === d.source).y)
+.attr("x2", d => nodes.find(node => node.id === d.target).x) // finding x value of target
+.attr("y2", d => nodes.find(node => node.id === d.target).y)
+.attr("stroke", "grey")
+.attr("stroke-width", d => 4 * d.strength)
+*/
 
 // Basic layout. Evenly spaces nodes within a group on y-layers. No edge crossing minimization.
 export const basicLayout = (nodes) => {
@@ -79,17 +91,14 @@ export const dagreLayout = (nodes, links, nodeSize) => {
 }
 
 // Sugiyama layout library.
+// https://codepen.io/brinkbot/pen/oNQwNRv?editors=0010
+// https://erikbrinkman.github.io/d3-dag/
 export const sugiyamaLayout = (nodes, links, nodeSize) => {
-    // create DAG data structure from nodes and links.
-    const dag_data = nodes.map(node => ({id: node.id, parentIds: []}))
-    links.forEach(link => {
-        const targetNode = dag_data.find(node => node.id === link.target)
-        targetNode.parentIds.push(link.source)
-    })
+    // creating graph object
     const builder = d3dag.graphStratify();
-    const dagGraph = builder(dag_data);
+    const dagGraph = builder(nodes);
 
-    // layout
+    // layout function
     const layout = d3dag
         .sugiyama()
         .layering(d3dag.layeringLongestPath())
@@ -97,20 +106,32 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
         .coord(d3dag.coordSimplex())
         .nodeSize([nodeSize, nodeSize])
         .gap([nodeSize/2, nodeSize/2])
-        // // truncates edge to render arrows well
+        // truncates edge to render arrows well
         .tweaks([d3dag.tweakShape([nodeSize, nodeSize], d3dag.shapeEllipse)])
 
     const layoutObj = layout(dagGraph);
 
-    nodes.forEach(node => {
-        const layoutNode = dagGraph.node(node.id)
-        console.log(layoutNode)
-        // node.x = layoutNode.x
-        // node.y = layoutNode.y
+    // transforming nodes and links to simplified format for rendering
+    const nodesBase = [...dagGraph.nodes()].map(node => {
+        return {
+            ...node.data, 
+            x: node.uy,
+            y: node.ux
+        }
     })
 
-    layoutObj.nodesBase = nodes
+    // swap x and y of links for rendering. left -> right formatting
+    const linksBase = [...dagGraph.links()].map(link => {
+        return {
+            source: link.source.data.id,
+            target: link.target.data.id,
+            points: link.points.map(point => [point[1], point[0]]),
+            strength: .5
+        }
+    })
 
-    return layoutObj
+    console.log(Math.min(...linksBase.map(link => link.points[0][0])))
+
+    return {nodesBase, linksBase, width: layoutObj.height, height: layoutObj.width}
 }
 

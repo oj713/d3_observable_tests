@@ -1,8 +1,56 @@
 import {useRef, useEffect, useState} from 'react'
 import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
-import {dagreLayout, sugiyamaLayout} from '../BN_tools/layout_methods.js'
+import {sugiyamaLayout} from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
+
+const NetLegend = () => {
+    const legendRef = useRef()
+
+    // variables
+    const colorLegendScale = {
+        "Excess/Elevated": "#F15946",
+        "Normal/Average": "#FCDE9C",
+        "Insufficient/Weak": "#75B9BE"
+    }
+    const padding = 25
+    const width = 170
+    const radius = 10
+
+    const legend = d3.create("svg")
+        .attr("width", width)
+        .attr("height", 2 * padding + 6 * radius)
+        .style('background', 'white')
+        .style("border", "1px solid black")
+
+    legend.selectAll('circle')
+        .data(Object.entries(colorLegendScale))
+        .enter()
+        .append('circle')
+            .attr('cy', (d, i) => i * 3 * radius)
+            .attr('r', radius)
+            .attr('fill', d => d[1])
+            .attr('transform', `translate(${padding}, ${padding})`)
+    legend.selectAll('text')
+        .data(Object.entries(colorLegendScale))
+        .enter()
+        .append('text')
+            .attr('x', radius * 1.5)
+            .attr('y', (d, i) => i * 3 * radius)
+            .attr('dy', radius/2)
+            .text(d => d[0])
+            .attr('font-size', radius * 1.3)
+            .attr('transform', `translate(${padding}, ${padding})`)
+
+    useEffect(() => {
+        legendRef.current.append(legend.node())
+        return(() => legend.node().remove())
+    }, [legend])
+
+    return (
+        <div className = "position-absolute" style={{top:padding, left:padding}} ref = {legendRef}></div>
+    )
+}
 
 // Evidence propagation example
 const PropagatedNet = ({nodeStarter, links}) => {
@@ -10,11 +58,11 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 102
-    const layout = dagreLayout(nodeStarter, links, nodeSize)
-    const {nodesBase, width, height} = layout
+    // const layout = dagreLayout(nodeStarter, links, nodeSize)
+    // const {nodesBase, width, height} = layout
 
-    // const sugLayout = sugiyamaLayout(nodeStarter, links, nodeSize)
-    // console.log("Sugiyama layout object", sugLayout)
+    const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, links, nodeSize)
+    const line = d3.line().curve(d3.curveMonotoneY)
 
     // basic features of the graph
     const radius = nodeSize/3 // node size
@@ -32,12 +80,6 @@ const PropagatedNet = ({nodeStarter, links}) => {
         'Excess': '#F15946'
     }
 
-    const colorLegendScale = {
-        "Excess/Elevated": "#F15946",
-        "Normal/Average": "#FCDE9C",
-        "Insufficient/Weak": "#75B9BE"
-    }
-
     const colorScheme = d3.scaleOrdinal(d3.schemePastel2)
     const getFillColor = (group) => {
         const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
@@ -47,10 +89,12 @@ const PropagatedNet = ({nodeStarter, links}) => {
     }
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
+    const padding = 25
+    const svgHeight = window.innerHeight - 100
     const svg = d3.create("svg")
-        // .attr("width", width)
-        // .attr("height", height)
-        .attr("viewBox", [0, 0, width, height])
+        .attr("width", "100%")
+        .attr("height", svgHeight)
+        .attr("viewBox", [-padding, -padding, width + 2*padding, height + 2*padding])
         .style("border", "1px solid black")
 
     // background
@@ -58,44 +102,10 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .style('fill', 'transparent')
         .attr('width', width)
         .attr('height', height)
-        .on('click', () => render({nodes: nodesBase, links}))
+        .on('click', () => render({nodes: nodesBase, links: linksBase}))
 
     const container = svg.append("g")
         .attr("class", "board")
-
-    // legend
-    const legend = svg.append("g")
-        .attr('class', 'legend');
-
-    const legendX = width * .8
-
-    legend.selectAll('background')
-        .data([1])
-        .enter()
-        .append('rect')
-            .attr('x', legendX - 40)
-            .attr('y', height * .05 + 10)
-            .attr('width', 300)
-            .attr('height', 180)
-            .attr('fill', 'white')
-            .attr('stroke', 'black')
-    legend.selectAll('circle')
-        .data(Object.entries(colorLegendScale))
-        .enter()
-        .append('circle')
-            .attr('cx', legendX)
-            .attr('cy', (d, i) => height * .07 + i * 50)
-            .attr('r', 20)
-            .attr('fill', d => d[1])
-    legend.selectAll('text')
-        .data(Object.entries(colorLegendScale))
-        .enter()
-        .append('text')
-            .attr('x', legendX + 30)
-            .attr('y', (d, i) => height * .071 + i * 50)
-            .attr('dy', 6)
-            .text(d => d[0])
-            .attr('font-size', '25px')
 
     svg.call(d3.zoom()
         .extent([[0, 0], [width, height]])
@@ -109,16 +119,15 @@ const PropagatedNet = ({nodeStarter, links}) => {
     const render = ({nodes, links}) => {
 
     // link data
-    container.selectAll("line")
-    .data(links, d => d.id)
-    .enter()
-    .append("line")
-    .attr("x1", d => nodes.find(node => node.id === d.source).x) // finding x value of source
-    .attr("y1", d => nodes.find(node => node.id === d.source).y)
-    .attr("x2", d => nodes.find(node => node.id === d.target).x) // finding x value of target
-    .attr("y2", d => nodes.find(node => node.id === d.target).y)
-    .attr("stroke", "grey")
-    .attr("stroke-width", d => 4 * d.strength)
+    container.selectAll("link")
+        .data(links, d => d.id)
+        .enter()
+        .append("path")
+            .attr("class", "link")
+            .attr("d", ({ points }) => line(points))
+            .attr("stroke", "grey")
+            .attr('fill', 'none')
+            .attr("stroke-width", d => 4 * d.strength)
 
     // Node center
     const circles = container.selectAll("circle.node")
@@ -160,7 +169,6 @@ const PropagatedNet = ({nodeStarter, links}) => {
         try {
             // await response from backend
             const newProbabilities = await propagateEvidence({evidence: evidence})
-            console.log(newProbabilities)
 
             // update nodes with new probabilities
             const newNodes = nodes.map(node => {
@@ -236,7 +244,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
     });
     } 
 
-    render({nodes: nodesBase, links})
+    render({nodes: nodesBase, links: linksBase})
 
     // Appending to DOM
     useEffect(() => {
@@ -245,7 +253,9 @@ const PropagatedNet = ({nodeStarter, links}) => {
     }, [svg])
 
     return (
-        <div ref = {netRef}></div>
+        <div className = "position-relative" ref = {netRef}>
+            <NetLegend/>
+        </div>
     )
 }
 
