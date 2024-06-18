@@ -1,7 +1,7 @@
 import {useRef, useEffect, useState} from 'react'
 import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
-import {sugiyamaLayout} from '../BN_tools/layout_methods.js'
+import * as lm from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
 const NetLegend = () => {
@@ -61,15 +61,15 @@ const NetLegend = () => {
 }
 
 // Evidence propagation example
-const PropagatedNet = ({nodeStarter, links}) => {
+const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
     const netRef = useRef()
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 102
-    // const layout = dagreLayout(nodeStarter, links, nodeSize)
-    // const {nodesBase, linksBase, width, height} = layout
 
-    const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, links, nodeSize)
+    const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize)
+    //const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, nodeSize)
+    //const {nodesBase, linksBase, width, height} = basicLayout(nodeStarter, nodeSize)
     const line = d3.line().curve(d3.curveMonotoneX)
 
     // basic features of the graph
@@ -98,7 +98,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
-    const svgHeight = window.innerHeight - 100
+    const svgHeight = window.innerHeight - 150
     const svg = d3.create("svg")
         .attr("width", "100%")
         .attr("height", svgHeight)
@@ -269,6 +269,14 @@ const PropagatedNet = ({nodeStarter, links}) => {
 export default function BayesianNet() {
     const [nodeStarter, setNodeStarter] = useState([])
     const [links, setLinks] = useState([])
+    const [layoutAlgorithm, setLayoutAlgorithm] = useState('sugiyama')
+
+    const layouts = {
+        'sugiyama': lm.sugiyamaLayout,
+        'moddedSugiyama': lm.rankedSugiyama,
+        'basicLayout': lm.basicLayout,
+        'dagreLayout': lm.dagreLayoutCompound
+    }
 
     // testing retrieval from backend
     // the backend shoulllddddddd be the one formatting the data into what we need
@@ -287,7 +295,14 @@ export default function BayesianNet() {
         <div>
             <h2> Propagated Bayesian Network </h2>
             <hr/>
-            <PropagatedNet nodeStarter = {nodeStarter} links = {links}/>
+            <label for = "layoutalg" className = "p-2">Select a layout algorithm: </label>
+            <select onChange = {(e) => setLayoutAlgorithm(e.target.value)}>
+                <option value = "sugiyama"> Sugiyama layout</option>
+                <option value = "moddedSugiyama"> Sugiyama-informed grouping</option>
+                <option value = "basicLayout"> Edge-ignorant grouping </option>
+                <option value = "dagreLayout"> Dagre layout </option>
+            </select>
+            <PropagatedNet nodeStarter = {nodeStarter} links = {links} layoutAlgorithm = {layouts[layoutAlgorithm]}/>
         </div>
     )
 }
