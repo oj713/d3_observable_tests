@@ -102,25 +102,14 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .style('fill', 'transparent')
         .attr('width', width)
         .attr('height', height)
-        .on('click', () => render({nodes: nodesBase, links: linksBase}))
+        .on('click', () => {render({nodes: nodesBase, evidence: {}})})
 
     const container = svg.append("g")
         .attr("class", "board")
 
-    svg.call(d3.zoom()
-        .extent([[0, 0], [width, height]])
-        .scaleExtent([1, 8])
-        .on("zoom", function(event) {
-            container.attr("transform", event.transform)
-        }))
-
-    // Rendering function. allows nodes/links to be updated
-    // --------------------------------------------------------------------------------
-    const render = ({nodes, links}) => {
-
     // link data
     container.selectAll("link")
-        .data(links, d => d.id)
+        .data(linksBase, d => d.id)
         .enter()
         .append("path")
             .attr("class", "link")
@@ -128,6 +117,18 @@ const PropagatedNet = ({nodeStarter, links}) => {
             .attr("stroke", "grey")
             .attr('fill', 'none')
             .attr("stroke-width", d => 4 * d.strength)
+
+    // zooming
+    svg.call(d3.zoom()
+        .extent([[0, 0], [width, height]])
+        .scaleExtent([1, 8])
+        .on("zoom", function(event) {
+            container.attr("transform", event.transform)
+        }))
+
+    // Rendering function. allows nodes to be updated
+    // --------------------------------------------------------------------------------
+    const render = ({nodes, evidence}) => {
 
     // Node center
     const circles = container.selectAll("circle.node")
@@ -165,14 +166,15 @@ const PropagatedNet = ({nodeStarter, links}) => {
         .outerRadius(radius * 1.5);
 
     // sendEvidence -- currently random propagation
-    const sendEvidence = async({evidence, add}) => {
+    // adds new evidence to existing evidence list
+    const sendEvidence = async({newEvidence}) => {
         try {
             // await response from backend
-            const newProbabilities = await propagateEvidence({evidence: evidence})
+            const newProbabilities = await propagateEvidence({evidence: newEvidence})
 
             // update nodes with new probabilities
             const newNodes = nodes.map(node => {
-                const isEvidence = Object.keys(evidence).includes(node.id)
+                const isEvidence = Object.keys(newEvidence).includes(node.id)
                 return {
                     ...node,
                     values: newProbabilities[node.id],
@@ -181,7 +183,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
             })
 
             // re-render with new nodes
-            render({nodes: newNodes, links})
+            render({nodes: newNodes, evidence: newEvidence})
         } catch (error) {
             alert('Error propagating evidence: ' + error.message)
         }
@@ -199,12 +201,9 @@ const PropagatedNet = ({nodeStarter, links}) => {
         const arcs = pie(node.values)
 
         const setEvidence = (event, d) => {
-            const newEvidence = {[node.id]: d.data.label}
+            const newEvidence = {...evidence, [node.id]: d.data.label}
 
-            // temporarily tearing down shift + click functionality. TODO: bring this back.
-            // const add = event.shiftKey
-
-            sendEvidence({evidence: newEvidence, add: false})
+            sendEvidence({newEvidence: newEvidence})
         }
 
         const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
@@ -244,7 +243,7 @@ const PropagatedNet = ({nodeStarter, links}) => {
     });
     } 
 
-    render({nodes: nodesBase, links: linksBase})
+    render({nodes: nodesBase, evidence: {}})
 
     // Appending to DOM
     useEffect(() => {
