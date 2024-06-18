@@ -46,10 +46,10 @@ export const basicLayout = (nodes) => {
 
 // Dagre layout library. Supports subgraphs and edge crossing minimization. Rather spaced out. 
 export const dagreLayout = (nodes, links, nodeSize) => {
-    const g = new dg.graphlib.Graph({compound: true}) 
+    const g = new dg.graphlib.Graph() 
 
     // Set an object for the graph label with margins and rank direction
-    g.setGraph({ marginx: 20, marginy: 20, rankdir: 'TB', align: 'UL' });
+    g.setGraph({ marginx: 20, marginy: 20, rankdir: 'TB', align: 'UL', ranker: 'longest-path' });
     
     // Default to assigning a new object as a label for each new edge
     g.setDefaultEdgeLabel(() => ({}));
@@ -83,6 +83,7 @@ export const dagreLayout = (nodes, links, nodeSize) => {
 
     const layoutObj = {
         nodesBase: nodes,
+        linksBase: {},
         width: g._label.width,
         height: g._label.height
     }
@@ -98,10 +99,13 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
     const builder = d3dag.graphStratify();
     const dagGraph = builder(nodes);
 
+    // ranking function
+    const rank = (node) => groupHierarchy.indexOf(node.group)
+
     // layout function
     const layout = d3dag
         .sugiyama()
-        .layering(d3dag.layeringLongestPath())
+        .layering(d3dag.layeringLongestPath().rank(rank))
         .decross(d3dag.decrossOpt())
         .coord(d3dag.coordSimplex())
         .nodeSize([nodeSize, nodeSize])
@@ -129,8 +133,6 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
             strength: .5
         }
     })
-
-    console.log(Math.min(...linksBase.map(link => link.points[0][0])))
 
     return {nodesBase, linksBase, width: layoutObj.height, height: layoutObj.width}
 }

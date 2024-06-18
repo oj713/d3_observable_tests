@@ -20,8 +20,16 @@ const NetLegend = () => {
     const legend = d3.create("svg")
         .attr("width", width)
         .attr("height", 2 * padding + 6 * radius)
-        .style('background', 'white')
         .style("border", "1px solid black")
+
+    legend.selectAll('rect')
+        .data([1])
+        .enter()
+        .append('rect')
+            .attr('width', width)
+            .attr('height', 2 * padding + 6 * radius)
+            .attr('fill', 'white')
+            .attr('opacity', 0.8)
 
     legend.selectAll('circle')
         .data(Object.entries(colorLegendScale))
@@ -59,10 +67,10 @@ const PropagatedNet = ({nodeStarter, links}) => {
     // Layout computation. Replace for different layouts.
     const nodeSize = 102
     // const layout = dagreLayout(nodeStarter, links, nodeSize)
-    // const {nodesBase, width, height} = layout
+    // const {nodesBase, linksBase, width, height} = layout
 
     const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, links, nodeSize)
-    const line = d3.line().curve(d3.curveMonotoneY)
+    const line = d3.line().curve(d3.curveMonotoneX)
 
     // basic features of the graph
     const radius = nodeSize/3 // node size
@@ -100,8 +108,8 @@ const PropagatedNet = ({nodeStarter, links}) => {
     // background
     svg.append('rect')
         .style('fill', 'transparent')
-        .attr('width', width)
-        .attr('height', height)
+        .attr('width', '100%')
+        .attr('height', svgHeight)
         .on('click', () => {render({nodes: nodesBase, evidence: {}})})
 
     const container = svg.append("g")
