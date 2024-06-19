@@ -80,7 +80,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // Layout computation. Replace for different layouts.
     const nodeSize = 132
 
-    const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize)
+    const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
     //const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, nodeSize)
     //const {nodesBase, linksBase, width, height} = basicLayout(nodeStarter, nodeSize)
     const line = d3.line().curve(d3.curveMonotoneX)
@@ -113,7 +113,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
     const svgHeight = window.innerHeight - 190
-    const svgWidth = netRef.current.parentElement.clientWidth
+    const svgWidth = netRef.current ? netRef.current.parentElement.clientWidth : 800
     const svg = d3.create("svg")
         .attr("width", svgWidth)
         .attr("height", svgHeight)
@@ -121,7 +121,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("border", "1px solid black")
         .on('click', (event) => {
             if (!d3.select(event.target).classed('node')) {
-                render({ nodes: nodesBase, evidence: {} });
+                render({ nodes: nodesBase, evidence: {}, markovIds: []});
             }
         })
 
@@ -129,7 +129,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr("class", "board")
 
     // Arrows
-    svg.append("defs").selectAll("marker") // "defs" are like custom prebuilt components
+    const defs = svg.append("defs")
+    defs.selectAll("marker") // "defs" are like custom prebuilt components
         .data(["end"])
         .join("marker")
         .attr("id", "arrow")
@@ -143,17 +144,19 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr("fill", "grey")
             .attr("d", 'M0,-5L10,0L0,5') // triangle shape
 
-    // link data
-    container.selectAll("link")
-        .data(linksBase, d => d.id)
-        .enter()
-        .append("path")
-            .attr("class", "link")
-            .attr("d", ({ points }) => line(points))
-            .attr("stroke", "grey")
-            .attr('fill', 'none')
-            .attr("stroke-width", d => 4 * d.strength)
-            .attr('marker-end', 'url(#arrow)')
+    // Glowing effect
+    defs.selectAll('filter')
+        .data(['glow'])
+        .join('filter')
+        .attr('id', 'glow')
+        .append('feGaussianBlur')
+            .attr("stdDeviation","6")
+            .attr("result","coloredBlur")
+        .append('feMerge')
+        .append('feMergeNode')
+            .attr("in","coloredBlur")
+        .append('feMergeNode')
+            .attr("in","SourceGraphic")
 
     // zooming
     svg.call(d3.zoom()
@@ -165,13 +168,48 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
     // Rendering function. allows nodes to be updated
     // --------------------------------------------------------------------------------
-    const render = ({nodes, evidence}) => {
+    const render = ({nodes, evidence, markovIds}) => {
 
-    // Node center
-    const circles = container.selectAll("circle.node")
-        .data(nodes, d => d.id)
+    const markovNodes = nodes.filter(node => markovIds.includes(node.id))
+
+    // Markov glow
+    container.selectAll("circle.markovGlow")
+        .data(markovNodes, d => d.id)
+        .join("circle")
+        .attr("class", "markovGlow")
+        .style("filter", "url(#glow)")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", radius * 1.7)
+        .style("fill", colorScheme === "prob" ? "#8dde5b" : "#c081f0")
+    
+    container.selectAll("circle.markovBorder")
+        .data(markovNodes, d => d.id)
+        .join("circle")
+        .attr("class", "markovBorder")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y)
+        .attr("r", radius * 1.5)
+        .style("stroke", "white")
+        .style("stroke-width", "4px")
+        .style("fill", "none")
+
+    // Links
+    container.selectAll("link")
+        .data(linksBase, d => d.id)
+        .enter()
+        .append("path")
+            .attr("class", "link")
+            .attr("d", ({ points }) => line(points))
+            .attr("stroke", "grey")
+            .attr('fill', 'none')
+            .attr("stroke-width", d => 4 * d.strength)
+            .attr('marker-end', 'url(#arrow)')
         
-    circles.join("circle")
+    // Node center
+    container.selectAll("circle.node")
+        .data(nodes, d => d.id)
+        .join("circle")
         .attr("class", "node")
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
@@ -181,10 +219,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("stroke", "white")
         .style("stroke-width", "3px")
         
-    const nodeTitles = container.selectAll("text.node-title")
+    container.selectAll("text.node-title")
         .data(nodes, (d) => d.id)
-
-    nodeTitles.join("text")
+        .join("text")
         .attr("class", "node-title node")
         .attr("x", d => d.x)
         .attr("y", d => d.y)
@@ -295,7 +332,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     });
     } 
 
-    render({nodes: nodesBase, evidence: {}})
+    render({nodes: nodesBase, evidence: {}, markovIds: ["Shaping_Elasticity"]})
 
     // Appending to DOM
     useEffect(() => {

@@ -4,7 +4,7 @@ import './nav_sidebar.css';
 const NavSidebar = () => {
     const {pathname} = useLocation();
     let active = pathname.split("/")[1];
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     const toggleSidebar = () => {
         setIsCollapsed(!isCollapsed)
