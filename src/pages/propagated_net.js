@@ -4,14 +4,25 @@ import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
 import * as lm from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
-const NetLegend = () => {
+const probValues = {
+    "low": "gainsboro", 
+    "avg": "gray", 
+    "high": "#454545"
+}
+const probCols = {
+    "low": "#75B9BE",
+    "avg": "#FCDE9C",
+    "high": "#F15946"
+}
+
+const NetLegend = ({cols}) => {
     const legendRef = useRef()
 
     // variables
     const colorLegendScale = {
-        "Excess/Elevated": "#F15946",
-        "Normal/Average": "#FCDE9C",
-        "Insufficient/Weak": "#75B9BE"
+        "Excess/Elevated": cols.high,
+        "Normal/Average": cols.avg,
+        "Insufficient/Weak": cols.low
     }
     const padding = 25
     const width = 170
@@ -39,6 +50,8 @@ const NetLegend = () => {
             .attr('r', radius)
             .attr('fill', d => d[1])
             .attr('transform', `translate(${padding}, ${padding})`)
+            .attr('stroke', 'white')
+            .attr('stroke-width', 1)
     legend.selectAll('text')
         .data(Object.entries(colorLegendScale))
         .enter()
@@ -61,11 +74,11 @@ const NetLegend = () => {
 }
 
 // Evidence propagation example
-const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
+const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const netRef = useRef()
 
     // Layout computation. Replace for different layouts.
-    const nodeSize = 102
+    const nodeSize = 132
 
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize)
     //const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, nodeSize)
@@ -76,29 +89,30 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
 
+    // color schemes dependent on selected color option
+    const cols = colorScheme === "prob" ? probCols : probValues
     const colorScale = {
-        "insufficient": "#75B9BE",
-        "normal": "#FCDE9C",
-        "excess": "#F15946",
-        "average": "#FCDE9C",
-        "elevated": "#F15946",
-        "weak": "#75B9BE",
-        "Deficient": '#75B9BE',
-        'Normal': '#FCDE9C',
-        'Excess': '#F15946'
+        "insufficient": cols.low,
+        "normal": cols.avg,
+        "excess": cols.high,
+        "average": cols.avg,
+        "elevated": cols.high,
+        "weak": cols.low,
+        "Deficient": cols.low,
+        'Normal': cols.avg,
+        'Excess': cols.high
     }
-
-    const colorScheme = d3.scaleOrdinal(d3.schemePastel2)
+    const colors = d3.scaleOrdinal(d3.schemeSet3)
     const getFillColor = (group) => {
         const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
-            'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
+            'Oven', 'Cutting', 'Crumb', 'Bread']
         const groupNum = groupHierarchy.indexOf(group)
-        return colorScheme(groupNum)
+        return colors(groupNum)
     }
 
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
-    const svgHeight = window.innerHeight - 150
+    const svgHeight = window.innerHeight - 190
     const svg = d3.create("svg")
         .attr("width", "100%")
         .attr("height", svgHeight)
@@ -147,10 +161,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
         .attr("r", radius)
-        // color based on group
-        .style("fill", d => d.isEvidence ? "black" : getFillColor(d.group))
+        .style("fill", d => d.isEvidence ? "black" : 
+            colorScheme === "prob" ? "white" : getFillColor(d.group))
         .style("stroke", "white")
-        .style("stroke-width", "2px")
+        .style("stroke-width", "3px")
         
     const nodeTitles = container.selectAll("text.node-title")
         .data(nodes, (d) => d.id)
@@ -162,8 +176,23 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
         .attr("text-anchor", "middle")
         .style("fill", d => d.isEvidence ? "white" : "black")
         .style("font-size", "12px")
-        .attr("dy", 5)
+        .style("font-weight", "bold")
+        .attr("dy", 10)
         .text(d => d.title)
+    
+    // node groups
+    container.selectAll("text.node-group")
+        .data(nodes, (d) => d.id)
+        .join("text")
+        .attr("class", "node-group")
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .attr("text-anchor", "middle")
+        .style("fill", d => d.isEvidence ? "white" : "black")
+        .style("font-size", "10px")
+        .style("font-style", "italic")
+        .attr("dy", -5)
+        .text(d => d.group)
         
     //  --------- PIE CHART ELEMENT
     const pie = d3.pie()
@@ -261,7 +290,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm}) => {
 
     return (
         <div className = "position-relative" ref = {netRef}>
-            <NetLegend/>
+            <NetLegend cols = {cols}/>
         </div>
     )
 }
@@ -270,6 +299,7 @@ export default function BayesianNet() {
     const [nodeStarter, setNodeStarter] = useState([])
     const [links, setLinks] = useState([])
     const [layoutAlgorithm, setLayoutAlgorithm] = useState('sugiyama')
+    const [colorScheme, setColorScheme] = useState("prob")
 
     const layouts = {
         'sugiyama': lm.sugiyamaLayout,
@@ -294,15 +324,29 @@ export default function BayesianNet() {
     return (
         <div>
             <h2> Propagated Bayesian Network </h2>
-            <hr/>
-            <label for = "layoutalg" className = "p-2">Select a layout algorithm: </label>
-            <select onChange = {(e) => setLayoutAlgorithm(e.target.value)}>
-                <option value = "sugiyama"> Sugiyama layout</option>
-                <option value = "moddedSugiyama"> Sugiyama-informed grouping</option>
-                <option value = "basicLayout"> Edge-ignorant grouping </option>
-                <option value = "dagreLayout"> Dagre layout </option>
-            </select>
-            <PropagatedNet nodeStarter = {nodeStarter} links = {links} layoutAlgorithm = {layouts[layoutAlgorithm]}/>
+            <hr className = "pb-0"/>
+            <div className = "d-flex">
+                <div className = "inline-block pb-3 pe-4">
+                    <label for = "layoutalg" className = "p-1">Select a layout algorithm: </label>
+                    <br/>
+                    <select id = "#layoutalg" onChange = {(e) => setLayoutAlgorithm(e.target.value)}>
+                        <option value = "sugiyama"> Sugiyama layout</option>
+                        <option value = "moddedSugiyama"> Sugiyama-informed grouping</option>
+                        <option value = "basicLayout"> Edge-ignorant grouping </option>
+                        <option value = "dagreLayout"> Dagre layout </option>
+                    </select>
+                </div>
+                <div className = "inline-block pb-3 pe-4">
+                    <label for = "colorscheme" className = "p-1">Select a color scheme: </label>
+                    <br/>
+                    <select id = "#colorscheme" onChange = {(e) => setColorScheme(e.target.value)}>
+                        <option value = "prob"> Colorful Probabilities </option>
+                        <option value = "group"> Colorful Groups </option>
+                    </select>
+                </div>
+            </div>
+            <PropagatedNet nodeStarter = {nodeStarter} links = {links} 
+            layoutAlgorithm = {layouts[layoutAlgorithm]} colorScheme = {colorScheme}/>
         </div>
     )
 }

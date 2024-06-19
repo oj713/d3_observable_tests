@@ -3,8 +3,9 @@ import * as d3dag from 'd3-dag';
 import {scaleLinear} from 'd3-scale';
 
 // Global hierarchy order
+// 'PlaceInOven' changed to 'Oven' in network-parser.js
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
-    'PlaceInOven', 'Cutting', 'Crumb', 'Bread']
+    'Oven', 'Cutting', 'Crumb', 'Bread']
 
 
 /* Old link code. 
@@ -22,8 +23,8 @@ container.selectAll("line")
 
 // Basic layout. Evenly spaces nodes within a group on y-layers. No edge crossing minimization.
 export const basicLayout = (nodes, links, nodeSize) => {
-    const width = 1200
-    const height = 1000
+    const width = nodeSize * 12
+    const height = nodeSize * 10
     const yScale = scaleLinear().domain([-1, 1]).range([-width/2, width/2])
     const xScale = scaleLinear().domain([1, -1]).range([-height/2, height/2])
 
@@ -230,18 +231,18 @@ export const rankedSugiyama = (nodes, links, nodeSize) => {
         const groupNodes = nodes.filter(node => node.group === group)
         maxNumNodes = Math.max(maxNumNodes, groupNodes.length)
         groupNodes.forEach(node => {
-            node.x = (i + 1) * 150
+            node.x = (i + 1) * nodeSize * 1.5
             node.y = node.ux
         })
         groupNodes.sort((a, b) => a.y - b.y)
         // evenly space nodes in group around height 0
         groupNodes.forEach((node, j) => {
-            node.y = j * 150 - (groupNodes.length - 1) * 75
+            node.y = j * nodeSize * 1.5 - (groupNodes.length - 1) * nodeSize * .75
         })
     })
 
     nodes.forEach(node => {
-        node.y = node.y + (maxNumNodes - 1) * 75 + 75
+        node.y = node.y + (maxNumNodes - 1) * nodeSize * .75 + nodeSize * .75
     })
 
     const linksBase = links.map(link => {
@@ -257,7 +258,7 @@ export const rankedSugiyama = (nodes, links, nodeSize) => {
     })
 
     return {nodesBase: nodes, linksBase: linksBase, 
-        width: (groupHierarchy.length + 2) * 150, height: maxNumNodes * 150}
+        width: (groupHierarchy.length + 2) * nodeSize * 1.5, height: maxNumNodes * nodeSize * 1.5}
 }
 
 
