@@ -113,18 +113,17 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
     const svgHeight = window.innerHeight - 190
+    const svgWidth = window.innerWidth
     const svg = d3.create("svg")
-        .attr("width", "100%")
+        .attr("width", svgWidth)
         .attr("height", svgHeight)
         .attr("viewBox", [-padding, -padding, width + 2*padding, height + 2*padding])
         .style("border", "1px solid black")
-
-    // background
-    svg.append('rect')
-        .style('fill', 'transparent')
-        .attr('width', '100%')
-        .attr('height', svgHeight)
-        .on('click', () => {render({nodes: nodesBase, evidence: {}})})
+        .on('click', (event) => {
+            if (!d3.select(event.target).classed('node')) {
+                render({ nodes: nodesBase, evidence: {} });
+            }
+        })
 
     const container = svg.append("g")
         .attr("class", "board")
@@ -170,7 +169,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .data(nodes, (d) => d.id)
 
     nodeTitles.join("text")
-        .attr("class", "node-title")
+        .attr("class", "node-title node")
         .attr("x", d => d.x)
         .attr("y", d => d.y)
         .attr("text-anchor", "middle")
@@ -184,7 +183,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     container.selectAll("text.node-group")
         .data(nodes, (d) => d.id)
         .join("text")
-        .attr("class", "node-group")
+        .attr("class", "node node-group")
         .attr("x", d => d.x)
         .attr("y", d => d.y)
         .attr("text-anchor", "middle")
@@ -229,7 +228,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const pieContainer = container.selectAll('g.pie-node')
         .data(nodes, d => d.id)
         .join('g')
-        .attr('class', 'pie-node')
+        .attr('class', 'pie-node node')
         .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
         
