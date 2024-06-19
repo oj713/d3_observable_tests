@@ -5,17 +5,16 @@
   top:0;
   z-index: 1000;
   display:block;
+  transition: width .3s ease;
 }
 
 .collapsed {
   width: var(--collapsed-sidebar-width);
 }
-
 .normal {
   width: var(--sidebar-width);
 }
 
-/* will fix this later */
 @media (max-width: 600px) {
   .sidebar {
     display:none;
@@ -26,6 +25,7 @@
   background-color: transparent;
   border:none;
   font-weight: bold;
+  white-space: nowrap;
 }
 .sidebar .list-group-item:hover {
   background-color: var(--darkjasper);

@@ -113,7 +113,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
     const svgHeight = window.innerHeight - 190
-    const svgWidth = window.innerWidth
+    const svgWidth = netRef.current.parentElement.clientWidth
     const svg = d3.create("svg")
         .attr("width", svgWidth)
         .attr("height", svgHeight)

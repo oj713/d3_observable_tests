@@ -170,7 +170,7 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
     const layout = d3dag
         .sugiyama()
         .layering(d3dag.layeringLongestPath().rank(rank))
-        .decross(d3dag.decrossOpt())
+        //.decross(d3dag.decrossOpt())
         .coord(d3dag.coordSimplex())
         .nodeSize([nodeSize, nodeSize])
         .gap([nodeSize/2, nodeSize/2])
