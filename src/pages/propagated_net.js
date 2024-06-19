@@ -128,6 +128,21 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const container = svg.append("g")
         .attr("class", "board")
 
+    // Arrows
+    svg.append("defs").selectAll("marker") // "defs" are like custom prebuilt components
+        .data(["end"])
+        .join("marker")
+        .attr("id", "arrow")
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 9)
+        .attr("refY", 0)
+        .attr("markerWidth", 8)
+        .attr("markerHeight", 8)
+        .attr("orient", "auto")
+        .append("path") // drawing
+            .attr("fill", "grey")
+            .attr("d", 'M0,-5L10,0L0,5') // triangle shape
+
     // link data
     container.selectAll("link")
         .data(linksBase, d => d.id)
@@ -138,6 +153,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr("stroke", "grey")
             .attr('fill', 'none')
             .attr("stroke-width", d => 4 * d.strength)
+            .attr('marker-end', 'url(#arrow)')
 
     // zooming
     svg.call(d3.zoom()
