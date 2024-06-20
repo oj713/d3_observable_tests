@@ -88,6 +88,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // basic features of the graph
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
+    const diffThreshold = 0.1 // importance threshold for evidence comparison
 
     // color schemes dependent on selected color option
     const cols = colorScheme === "prob" ? probCols : probValues
@@ -277,9 +278,12 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const pie = d3.pie()
         .value(d => d.value)
         .sort(null);
-    const arcFunc = d3.arc()
+    const innerArcFunc = d3.arc()
         .innerRadius(radius)
         .outerRadius(radius * 1.5);
+    const outerArcFunc = d3.arc()
+        .innerRadius(radius * 1.55)
+        .outerRadius(radius * 2.05);
 
     // sendEvidence -- currently random propagation
     // adds new evidence to existing evidence list
@@ -291,10 +295,17 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             // update nodes with new probabilities
             const newNodes = nodes.map(node => {
                 const isEvidence = Object.keys(newEvidence).includes(node.id)
+                // get "difference" metric
+                const baselineValues = nodesBase.find(n => n.id === node.id).values
+                console.log("B", baselineValues, "P", newProbabilities[node.id])
+                const diffFromBaseline = baselineValues.map((v, i) => 
+                    Math.abs(v.value - newProbabilities[node.id][i].value))
+                    .reduce((acc, curr) => acc + curr, 0)
                 return {
                     ...node,
                     values: newProbabilities[node.id],
-                    isEvidence: isEvidence
+                    isEvidence: isEvidence,
+                    diffFromBaseline: diffFromBaseline
                 }
             })
 
@@ -312,7 +323,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
         
-    // rendering each node
+    // rendering each node outer ring
     nodes.forEach(node => {
         const arcs = pie(node.values)
 
@@ -327,7 +338,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
         updatePies.enter() // new pie segments
             .append('path')
-            .attr('d', arcFunc)
+            .attr('d', outerArcFunc)
             .attr('fill', d => colorScale[d.data.label])
             .each(function(d) { this._current = d; })
             .on('mouseover', (event, d) => {
@@ -349,15 +360,41 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attrTween('d', function(d) {
                 const i = d3.interpolate(this._current, d);
                 this._current = i(0);
-                return t => arcFunc(i(t));
+                return t => outerArcFunc(i(t));
             })
             .attr('fill', d => colorScale[d.data.label])
             .select('title')
                 .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
 
         updatePies.exit().remove(); // remove old pie segments
-    });
-    } 
+    })
+
+    // COMPARISON RING
+    const thresholdNodes = nodes.filter(node => node.diffFromBaseline > diffThreshold)
+
+    const outerPieContainer = container.selectAll('g.outer-pie')
+        .data(nodesBase.filter(node => thresholdNodes.map(n => n.id).includes(node.id)), d => d.id)
+        .join('g')
+        .attr('class', 'outer-pie node')
+        .attr('transform', d => `translate(${d.x}, ${d.y})`)
+
+    // rendering each node inner ring
+    nodesBase.forEach(node => {
+        const arcs = pie(node.values)
+
+        const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+            .data(arcs, d => d.index)
+
+        updatePies.enter() // new pie segments
+            .append('path')
+            .attr('d', innerArcFunc)
+            .attr('fill', d => colorScale[d.data.label])
+            .style('opacity', .5)
+            .append('title')
+                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+    })
+
+    } // end render()
 
     // Initial render
     render({nodes: nodesBase, evidence: {}, markov: {}})

@@ -13,7 +13,8 @@ export const parseNodes = (nodesRaw) => {
             group: node.group === "PlaceInOven" ? "Oven" : node.group,
             x: 0,
             y: 0,
-            isEvidence: false
+            isEvidence: false,
+            diffFromBaseline: 0
         }
     })
 
