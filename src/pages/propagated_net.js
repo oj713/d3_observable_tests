@@ -1,5 +1,5 @@
 import {useRef, useEffect, useState} from 'react'
-import {getNetwork, propagateEvidence} from '../redux_stuff/network-services.js'
+import {getNetwork, getMarkov, propagateEvidence} from '../redux_stuff/network-services.js'
 import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
 import * as lm from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
@@ -102,6 +102,11 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         'Normal': cols.avg,
         'Excess': cols.high
     }
+    const markovCols = {
+        "target": colorScheme === "prob" ? "#0f5c28" : "#161694",
+        "blanket": colorScheme === "prob" ? "#76d13d" : "#904fc2"
+    }
+
     const colors = d3.scaleOrdinal(d3.schemeSet3)
     const getFillColor = (group) => {
         const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
@@ -121,7 +126,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("border", "1px solid black")
         .on('click', (event) => {
             if (!d3.select(event.target).classed('node')) {
-                render({ nodes: nodesBase, evidence: {}, markovIds: []});
+                render({ nodes: nodesBase, evidence: {}, markov: {}});
             }
         })
 
@@ -168,23 +173,33 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
     // Rendering function. allows nodes to be updated
     // --------------------------------------------------------------------------------
-    const render = ({nodes, evidence, markovIds}) => {
-
-    const markovNodes = nodes.filter(node => markovIds.includes(node.id))
+    const render = ({nodes, evidence, markov}) => {
+    
+    const getMarkovFill = (id) => {
+        if (!markov.id) {
+            return "transparent"
+        } else if (markov.id === id) {
+            return markovCols.target
+        } else if (markov.blanket.includes(id)) {
+            return markovCols.blanket
+        } else {
+            return "transparent"
+        }
+    }
 
     // Markov glow
     container.selectAll("circle.markovGlow")
-        .data(markovNodes, d => d.id)
+        .data(nodes, d => d.id)
         .join("circle")
         .attr("class", "markovGlow")
         .style("filter", "url(#glow)")
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
         .attr("r", radius * 1.7)
-        .style("fill", colorScheme === "prob" ? "#8dde5b" : "#c081f0")
-    
+        .style("fill", d => getMarkovFill(d.id))
+    // Markov border
     container.selectAll("circle.markovBorder")
-        .data(markovNodes, d => d.id)
+        .data(nodes, d => d.id)
         .join("circle")
         .attr("class", "markovBorder")
         .attr("cx", d => d.x)
@@ -205,7 +220,18 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr('fill', 'none')
             .attr("stroke-width", d => 4 * d.strength)
             .attr('marker-end', 'url(#arrow)')
+    
+    // Updates Markov blanket for nodes
+    const updateMarkov = (event, d) => {
+        if (!event.shiftKey) {return}
         
+        getMarkov(d.id).then(response => {
+            if (!response) {return}
+            render({nodes: nodes, evidence: evidence, 
+                markov: {"id": d.id, "blanket": response}})
+        })
+    }
+
     // Node center
     container.selectAll("circle.node")
         .data(nodes, d => d.id)
@@ -218,6 +244,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             colorScheme === "prob" ? "white" : getFillColor(d.group))
         .style("stroke", "white")
         .style("stroke-width", "3px")
+        .on("click", updateMarkov)
         
     container.selectAll("text.node-title")
         .data(nodes, (d) => d.id)
@@ -272,7 +299,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             })
 
             // re-render with new nodes
-            render({nodes: newNodes, evidence: newEvidence})
+            render({nodes: newNodes, evidence: newEvidence, markov: markov})
         } catch (error) {
             alert('Error propagating evidence: ' + error.message)
         }
@@ -332,7 +359,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     });
     } 
 
-    render({nodes: nodesBase, evidence: {}, markovIds: ["Shaping_Elasticity"]})
+    // Initial render
+    render({nodes: nodesBase, evidence: {}, markov: {}})
 
     // Appending to DOM
     useEffect(() => {

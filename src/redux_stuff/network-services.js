@@ -8,6 +8,11 @@ export const getNetwork = async () => {
     return response.data;
 }
 
+export const getMarkov = async(id) => {
+    const response = await axios.get(`${API_URL}/network/markov?id=${id}`);
+    return response.data;
+}
+
 export const propagateEvidence = async (evidence) => {
     const response = await axios.patch(`${API_URL}/network/inference`, evidence)
     return response.data
