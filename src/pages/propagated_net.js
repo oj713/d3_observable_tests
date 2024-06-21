@@ -88,7 +88,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // basic features of the graph
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
-    const diffThreshold = 0.1 // importance threshold for evidence comparison
+    const diffThreshold = 0.2 // importance threshold for evidence comparison
 
     // color schemes dependent on selected color option
     const cols = colorScheme === "prob" ? probCols : probValues
@@ -150,6 +150,18 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr("fill", "grey")
             .attr("d", 'M0,-5L10,0L0,5') // triangle shape
 
+    // Links
+    container.selectAll("link")
+        .data(linksBase, d => d.id)
+        .enter()
+        .append("path")
+            .attr("class", "link")
+            .attr("d", ({ points }) => line(points))
+            .attr("stroke", "grey")
+            .attr('fill', 'none')
+            .attr("stroke-width", d => 4 * d.strength)
+            .attr('marker-end', 'url(#arrow)')
+
     // Glowing effect
     defs.selectAll('filter')
         .data(['glow'])
@@ -209,22 +221,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("stroke", "white")
         .style("stroke-width", "4px")
         .style("fill", "none")
-
-    // Links
-    container.selectAll("link")
-        .data(linksBase, d => d.id)
-        .enter()
-        .append("path")
-            .attr("class", "link")
-            .attr("d", ({ points }) => line(points))
-            .attr("stroke", "grey")
-            .attr('fill', 'none')
-            .attr("stroke-width", d => 4 * d.strength)
-            .attr('marker-end', 'url(#arrow)')
     
     // Updates Markov blanket for nodes
     const updateMarkov = (event, d) => {
-        if (!event.shiftKey) {return}
+        //if (!event.shiftKey) {return}
         
         getMarkov(d.id).then(response => {
             if (!response) {return}
@@ -278,12 +278,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const pie = d3.pie()
         .value(d => d.value)
         .sort(null);
-    const innerArcFunc = d3.arc()
-        .innerRadius(radius)
-        .outerRadius(radius * 1.5);
-    const outerArcFunc = d3.arc()
-        .innerRadius(radius * 1.55)
-        .outerRadius(radius * 2.05);
+    const arcFunc = (start) => d3.arc()
+        .innerRadius(radius * start)
+        .outerRadius(radius * (start + 0.5))
 
     // sendEvidence -- currently random propagation
     // adds new evidence to existing evidence list
@@ -297,7 +294,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 const isEvidence = Object.keys(newEvidence).includes(node.id)
                 // get "difference" metric
                 const baselineValues = nodesBase.find(n => n.id === node.id).values
-                console.log("B", baselineValues, "P", newProbabilities[node.id])
                 const diffFromBaseline = baselineValues.map((v, i) => 
                     Math.abs(v.value - newProbabilities[node.id][i].value))
                     .reduce((acc, curr) => acc + curr, 0)
@@ -322,8 +318,32 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr('class', 'pie-node node')
         .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
-        
-    // rendering each node outer ring
+    // COMPARISON RING
+    const thresholdIds = nodes.filter(node => node.diffFromBaseline > diffThreshold).map(n => n.id)
+
+    const outerPieContainer = container.selectAll('g.outer-pie')
+        .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
+        .join('g')
+        .attr('class', 'outer-pie node')
+        .attr('transform', d => `translate(${d.x}, ${d.y})`)
+
+    // rendering each node inner ring
+    nodesBase.forEach(node => {
+        const arcs = pie(node.values)
+
+        const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+            .data(arcs, d => d.index)
+
+        updatePies.enter() // new pie segments
+            .append('path')
+            .attr('d', arcFunc(1))
+            .attr('fill', d => colorScale[d.data.label])
+            .style('opacity', .5)
+            .append('title')
+                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+    })
+    
+    // PRIMARY RING
     nodes.forEach(node => {
         const arcs = pie(node.values)
 
@@ -338,9 +358,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
         updatePies.enter() // new pie segments
             .append('path')
-            .attr('d', outerArcFunc)
+            .attr('d', arcFunc(1))
             .attr('fill', d => colorScale[d.data.label])
-            .each(function(d) { this._current = d; })
+            .each(function(d) { this._current = {data: d, diffFromBaseline: node.diffFromBaseline}})
             .on('mouseover', (event, d) => {
                 d3.select(event.target)
                 .attr("fill", d3.color(colorScale[d.data.label]).darker(1))
@@ -358,40 +378,17 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .transition() // update existing pies
             .duration(duration) 
             .attrTween('d', function(d) {
-                const i = d3.interpolate(this._current, d);
-                this._current = i(0);
-                return t => outerArcFunc(i(t));
+                const i = d3.interpolate(this._current.data, d)
+                const getR = (n) => n.diffFromBaseline > diffThreshold ? 1.55 : 1
+                const j = d3.interpolate(getR(this._current), getR(node))
+                this._current = {data: i(0), diffFromBaseline: node.diffFromBaseline}
+                return t => arcFunc(j(t))(i(t))
             })
             .attr('fill', d => colorScale[d.data.label])
             .select('title')
                 .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
 
         updatePies.exit().remove(); // remove old pie segments
-    })
-
-    // COMPARISON RING
-    const thresholdNodes = nodes.filter(node => node.diffFromBaseline > diffThreshold)
-
-    const outerPieContainer = container.selectAll('g.outer-pie')
-        .data(nodesBase.filter(node => thresholdNodes.map(n => n.id).includes(node.id)), d => d.id)
-        .join('g')
-        .attr('class', 'outer-pie node')
-        .attr('transform', d => `translate(${d.x}, ${d.y})`)
-
-    // rendering each node inner ring
-    nodesBase.forEach(node => {
-        const arcs = pie(node.values)
-
-        const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
-            .data(arcs, d => d.index)
-
-        updatePies.enter() // new pie segments
-            .append('path')
-            .attr('d', innerArcFunc)
-            .attr('fill', d => colorScale[d.data.label])
-            .style('opacity', .5)
-            .append('title')
-                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
     })
 
     } // end render()
