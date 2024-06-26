@@ -73,7 +73,13 @@ const NetLegend = ({cols}) => {
     )
 }
 
-// Evidence propagation example
+// Prototype propagated network
+// Todo: 
+// - Enable responsive viewbox to window size changes
+// - Fix links for expanded nodes
+// - importance algorithm
+// - toggleable evidence comparison mode
+// - 100% bug (set kneading elasticity to average)
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const netRef = useRef()
 
@@ -81,8 +87,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const nodeSize = 132
 
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
-    //const {nodesBase, linksBase, width, height} = sugiyamaLayout(nodeStarter, nodeSize)
-    //const {nodesBase, linksBase, width, height} = basicLayout(nodeStarter, nodeSize)
     const line = d3.line().curve(d3.curveMonotoneX)
 
     // basic features of the graph
@@ -309,9 +313,16 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 const diffFromBaseline = baselineValues.map((v, i) => 
                     Math.abs(v.value - newProbabilities[node.id][i].value))
                     .reduce((acc, curr) => acc + curr, 0)
+
+                // plotting breaks if a label probability is nearly 1
+                let plottableProbs = newProbabilities[node.id]
+                if (plottableProbs.some(p => p.value > .999)) {
+                    plottableProbs.forEach(p => { p.value = p.value > .999 ? 1 : 0 })
+                }
+                
                 return {
                     ...node,
-                    values: newProbabilities[node.id],
+                    values: plottableProbs,
                     isEvidence: isEvidence,
                     diffFromBaseline: diffFromBaseline
                 }
@@ -359,6 +370,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // PRIMARY RING
     nodes.forEach(node => {
         const arcs = pie(node.values)
+        if (node.id === "Kneading_DoughStickiness" || node.id === "Kneading_Elasticity") {
+            console.log(node.title, ":", ...node.values.map(e => e.value) )
+            //console.log(arcs)
+        }
 
         const setEvidence = (event, d) => {
             const newEvidence = {...evidence, [node.id]: d.data.label}
