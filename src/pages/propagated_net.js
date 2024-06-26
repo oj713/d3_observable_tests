@@ -126,7 +126,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr("viewBox", [-padding, -padding, width + 2*padding, height + 2*padding])
         .style("border", "1px solid black")
         .on('click', (event) => {
-            console.log(event.target)
             if (!d3.select(event.target).classed('node')) {
                 render({ nodes: nodesBase, evidence: {}, markov: {}});
             }
@@ -209,19 +208,11 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("filter", "url(#glow)")
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
-        .attr("r", radius * 1.7)
-        .style("fill", d => getMarkovFill(d.id))
-    // Markov border
-    container.selectAll("circle.markovBorder")
-        .data(nodes, d => d.id)
-        .join("circle")
-        .attr("class", "markovBorder")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", radius * 1.5)
-        .style("stroke", "white")
-        .style("stroke-width", "4px")
-        .style("fill", "none")
+        .attr("r", d => d.diffFromBaseline > diffThreshold ? radius * 2.3 : radius * 1.8)
+        .style("fill", "transparent")
+        .transition()
+            .duration(duration/5)
+            .style("fill", d => getMarkovFill(d.id))
     
     // Updates Markov blanket for nodes
     const updateMarkov = (event, d) => {
@@ -234,7 +225,27 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         })
     }
 
-    // Node center
+    // white background circle for nodes (hides markov blanket)
+    container.selectAll("circle.background")
+        .data(nodes, d => d.id)
+        .join(
+            enter => enter.append("circle")
+                .attr("class", "background")
+                .each(function(d) {this._current = d.diffFromBaseline})
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", radius * 1.5 + 2)
+                .style("fill", "white"),
+            update => update.transition()
+                .duration(duration)
+                .attrTween('r', function(d) {
+                    const getR = (diff) => diff > diffThreshold ? 2.05 : 1.5
+                    const i = d3.interpolate(getR(this._current), getR(d.diffFromBaseline))
+                    this._current =  d.diffFromBaseline
+                    return t => radius * i(t) + 2
+                })
+        )
+
     container.selectAll("circle.node")
         .data(nodes, d => d.id)
         .join("circle")
@@ -245,7 +256,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("fill", d => d.isEvidence ? "black" : 
             colorScheme === "prob" ? "white" : getFillColor(d.group))
         .style("stroke", "white")
-        .style("stroke-width", "3px")
+        .style("stroke-width", "4px")
         .on("click", updateMarkov)
         
     container.selectAll("text.node-title")

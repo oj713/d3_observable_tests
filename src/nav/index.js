@@ -11,12 +11,12 @@ const NavSidebar = () => {
     }
 
     const tabs = [
-        {name: "Notes", path: ""},
+        {name: "Propagated BN", path: ""},
         {name: "General", path: "general"},
         {name: "Networks Gen", path: "networksgen"},
         {name: "Bayesian Nodes", path: "bayesian-nodes"},
         {name: "Bayesian Random", path: "bayesian-net"},
-        {name: "Propagated BN", path: "propagated-net"},
+        {name: "Notes", path: "notes"},
     ]
 
     return (

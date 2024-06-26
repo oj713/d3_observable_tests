@@ -26,12 +26,12 @@ function App() {
           <NavSidebar/>
           <div className="bump-collapsed">
             <Routes>
-              <Route path="/" element={<NotesBox/>} />
+              <Route path="/" element={<PropagatedNet/>} />
               <Route path="/general" element={<GeneralPage/>} />
               <Route path="/networksgen" element={<NetworksGen/>} />
               <Route path="/bayesian-nodes" element={<NodeTests/>} />
               <Route path="/bayesian-net" element={<BayesianNet/>} />
-              <Route path="/propagated-net" element={<PropagatedNet/>} />
+              <Route path="/notes" element={<NotesBox/>} />
             </Routes>
           </div>
         </div>
