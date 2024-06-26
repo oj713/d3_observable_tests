@@ -126,6 +126,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr("viewBox", [-padding, -padding, width + 2*padding, height + 2*padding])
         .style("border", "1px solid black")
         .on('click', (event) => {
+            console.log(event.target)
             if (!d3.select(event.target).classed('node')) {
                 render({ nodes: nodesBase, evidence: {}, markov: {}});
             }
@@ -187,7 +188,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // Rendering function. allows nodes to be updated
     // --------------------------------------------------------------------------------
     const render = ({nodes, evidence, markov}) => {
-    
+
     const getMarkovFill = (id) => {
         if (!markov.id) {
             return "transparent"
@@ -337,6 +338,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         updatePies.enter() // new pie segments
             .append('path')
             .attr('d', arcFunc(1))
+            .attr('class', 'node')
             .attr('fill', d => colorScale[d.data.label])
             .style('opacity', .5)
             .append('title')
@@ -359,6 +361,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         updatePies.enter() // new pie segments
             .append('path')
             .attr('d', arcFunc(1))
+            .attr('class', 'node')
             .attr('fill', d => colorScale[d.data.label])
             .each(function(d) { this._current = {data: d, diffFromBaseline: node.diffFromBaseline}})
             .on('mouseover', (event, d) => {
