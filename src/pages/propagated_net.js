@@ -75,8 +75,6 @@ const NetLegend = ({cols}) => {
 
 // Prototype propagated network
 // Todo: 
-// - Enable responsive viewbox to window size changes
-// - Fix links for expanded nodes
 // - importance algorithm
 // - toggleable evidence comparison mode
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
@@ -122,9 +120,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // --------- BASIC SVG INITIALIZATION AND ELEMENTS
     const padding = 25
     const svgHeight = window.innerHeight - 190
-    const svgWidth = netRef.current ? netRef.current.parentElement.clientWidth : 800
     const svg = d3.create("svg")
-        .attr("width", svgWidth)
+        .attr("width", "100%")
         .attr("height", svgHeight)
         .attr("viewBox", [-padding, -padding, width + 2*padding, height + 2*padding])
         .style("border", "1px solid black")
