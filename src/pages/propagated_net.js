@@ -79,7 +79,6 @@ const NetLegend = ({cols}) => {
 // - Fix links for expanded nodes
 // - importance algorithm
 // - toggleable evidence comparison mode
-// - 100% bug (set kneading elasticity to average)
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const netRef = useRef()
 
@@ -138,33 +137,25 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const container = svg.append("g")
         .attr("class", "board")
 
-    // Arrows
+    // Arrowheads: defining 25 for interpolation
+    const ahI = d3.interpolate(9, radius * .35 + 9)
+    const arrowHeadDefData = [...new Array(25).keys()].map(i => {
+        return {refX: ahI(i * 4/100), id: i}
+    })
     const defs = svg.append("defs")
-    defs.selectAll("marker") // "defs" are like custom prebuilt components
-        .data(["end"])
+    defs.selectAll("marker")
+        .data(arrowHeadDefData)
         .join("marker")
-        .attr("id", "arrow")
+        .attr("id", d => `arrow_${d.id}`)
         .attr("viewBox", "0 -5 10 10")
-        .attr("refX", 9)
+        .attr("refX", d => d.refX) // position along link
         .attr("refY", 0)
         .attr("markerWidth", 8)
         .attr("markerHeight", 8)
         .attr("orient", "auto")
         .append("path") // drawing
             .attr("fill", "grey")
-            .attr("d", 'M0,-5L10,0L0,5') // triangle shape
-
-    // Links
-    container.selectAll("link")
-        .data(linksBase, d => d.id)
-        .enter()
-        .append("path")
-            .attr("class", "link")
-            .attr("d", ({ points }) => line(points))
-            .attr("stroke", "grey")
-            .attr('fill', 'none')
-            .attr("stroke-width", d => 4 * d.strength)
-            .attr('marker-end', 'url(#arrow)')
+            .attr("d", 'M0,-5L10,0L0,5')
 
     // Glowing effect
     defs.selectAll('filter')
@@ -228,6 +219,29 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 markov: {"id": d.id, "blanket": response}})
         })
     }
+
+    // Links -- arrowhead distance updates
+    container.selectAll("path.link")
+        .data(linksBase, d => d.id)
+        .join(
+            enter => enter.append("path")
+                .attr("class", "link")
+                .attr("d", ({ points }) => line(points))
+                .attr("stroke", "grey")
+                .attr('fill', 'none')
+                .attr("stroke-width", d => 4 * d.strength)
+                .attr('marker-end', "url(#arrow_0)")
+                .each(function(d) {this._current = 0}),
+            update => update // moving arrowheads
+                .transition()
+                .duration(duration)
+                .attrTween('marker-end', function(d) {
+                    const isExpanded = nodes.find(n => n.id === d.target).diffFromBaseline > diffThreshold ? 1 : 0
+                    const i = d3.interpolate(this._current * 24, isExpanded * 24)
+                    this._current = isExpanded
+                    return t => `url(#arrow_${Math.round(i(t))})`
+                })
+        )
 
     // white background circle for nodes (hides markov blanket)
     container.selectAll("circle.background")
@@ -370,10 +384,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // PRIMARY RING
     nodes.forEach(node => {
         const arcs = pie(node.values)
-        if (node.id === "Kneading_DoughStickiness" || node.id === "Kneading_Elasticity") {
-            console.log(node.title, ":", ...node.values.map(e => e.value) )
-            //console.log(arcs)
-        }
 
         const setEvidence = (event, d) => {
             const newEvidence = {...evidence, [node.id]: d.data.label}

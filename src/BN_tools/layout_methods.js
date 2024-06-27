@@ -191,6 +191,7 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
     // swap x and y of links for rendering. left -> right formatting
     const linksBase = [...dagGraph.links()].map(link => {
         return {
+            id: link.source.data.id + "->" + link.target.data.id,
             source: link.source.data.id,
             target: link.target.data.id,
             points: link.points.map(point => [point[1], point[0]]),
