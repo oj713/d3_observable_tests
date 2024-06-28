@@ -80,6 +80,11 @@ const NetLegend = ({cols}) => {
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // used to append the SVG to the DOM
     const netRef = useRef()
+    // Refs for updating nodes, evidence, and markov blanket
+    const evCompRef = useRef(false) // starting off false
+    const nodesRef = useRef([])
+    const evidenceRef = useRef({})
+    const markovRef = useRef({})
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 132
@@ -87,17 +92,18 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
     const line = d3.line().curve(d3.curveMonotoneX)
 
-    // Initial references
-    const evCompRef = useRef(true) 
-    const nodesRef = useRef(nodesBase)
-    const linksRef = useRef(linksBase)
-    const evidenceRef = useRef({})
-    const markovRef = useRef({})
-
     // basic features of the graph
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
-    const diffThreshold = 0.2 // importance threshold for evidence comparison
+    // "Significant Difference" function for evidence propagation
+    const isSigDiff = (id, newValues) => {
+        const baselineValues = nodesBase.find(n => n.id === id).values
+        const diff = baselineValues.map((v, i) => 
+            Math.abs(v.value - newValues[i].value))
+            .reduce((acc, curr) => acc + curr, 0)
+
+        return diff > .2 // "difference threshold"
+    }
 
     // color schemes dependent on selected color option
     const cols = colorScheme === "prob" ? probCols : probValues
@@ -135,7 +141,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("border", "1px solid black")
         .on('click', (event) => {
             if (!d3.select(event.target).classed('node')) {
-                render({ nodes: nodesBase, evidence: {}, markov: {}});
+                nodesRef.current = nodesBase
+                evidenceRef.current = {}
+                markovRef.current = {}
+                render()
             }
         })
 
@@ -184,198 +193,224 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             container.attr("transform", event.transform)
         }))
 
-    // Rendering function. allows nodes to be updated
+    // Rendering function, renders dynamic features of the graph
+    // - Markov glow behind nodes
+    // - Links with arrowheads
+    // - Nodes: background, central information, evidence ring, comparison ring
     // --------------------------------------------------------------------------------
-    const render = ({nodes, evidence, markov}) => {
-    console.log("New render, evcomp", evCompRef.current)
+    const render = () => {
+        const nodes = nodesRef.current
+        const evidence = evidenceRef.current
+        const markov = markovRef.current
 
-    const getMarkovFill = (id) => {
-        if (!markov.id) {
-            return "transparent"
-        } else if (markov.id === id) {
-            return markovCols.target
-        } else if (markov.blanket.includes(id)) {
-            return markovCols.blanket
-        } else {
-            return "transparent"
+        const getMarkovFill = (id) => {
+            if (!markov.id) {
+                return "transparent"
+            } else if (markov.id === id) {
+                return markovCols.target
+            } else if (markov.blanket.includes(id)) {
+                return markovCols.blanket
+            } else {
+                return "transparent"
+            }
         }
-    }
 
-    // Markov glow
-    container.selectAll("circle.markovGlow")
-        .data(nodes, d => d.id)
-        .join("circle")
-        .attr("class", "markovGlow")
-        .style("filter", "url(#glow)")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", d => evCompRef.current && (d.diffFromBaseline > diffThreshold) ? radius * 2.3 : radius * 1.8)
-        .style("fill", "transparent")
-        .transition()
-            .duration(duration/5)
-            .style("fill", d => getMarkovFill(d.id))
-    
-    // Updates Markov blanket for nodes
-    const updateMarkov = (event, d) => {
-        //if (!event.shiftKey) {return}
+        // Markov glow
+        container.selectAll("circle.markovGlow")
+            .data(nodes, d => d.id)
+            .join("circle")
+            .attr("class", "markovGlow")
+            .style("filter", "url(#glow)")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("r", d => evCompRef.current && d.diffFromBaseline ? radius * 2.3 : radius * 1.8)
+            .style("fill", "transparent")
+            .transition()
+                .duration(duration/5)
+                .style("fill", d => getMarkovFill(d.id))
         
-        getMarkov(d.id).then(response => {
-            if (!response) {return}
-            render({nodes: nodes, evidence: evidence, 
-                markov: {"id": d.id, "blanket": response}})
-        })
-    }
-
-    // Links -- arrowhead distance updates
-    container.selectAll("path.link")
-        .data(linksBase, d => d.id)
-        .join(
-            enter => enter.append("path")
-                .attr("class", "link")
-                .attr("d", ({ points }) => line(points))
-                .attr("stroke", "grey")
-                .attr('fill', 'none')
-                .attr("stroke-width", d => 4 * d.strength)
-                .attr('marker-end', "url(#arrow_0)")
-                .each(function(d) {this._current = 0}),
-            update => !evCompRef.current ? null : update // moving arrowheads
-                .transition()
-                .duration(duration)
-                .attrTween('marker-end', function(d) {
-                    const isExpanded = nodes.find(n => n.id === d.target).diffFromBaseline > diffThreshold ? 1 : 0
-                    const i = d3.interpolate(this._current * 24, isExpanded * 24)
-                    this._current = isExpanded
-                    return t => `url(#arrow_${Math.round(i(t))})`
-                })
-        )
-
-    // white background circle for nodes (hides markov blanket)
-    container.selectAll("circle.background")
-        .data(nodes, d => d.id)
-        .join(
-            enter => enter.append("circle")
-                .attr("class", "background")
-                .each(function(d) {this._current = d.diffFromBaseline})
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
-                .attr("r", radius * 1.5 + 2)
-                .style("fill", "white"),
-            update => !evCompRef.current ? null : update.transition()
-                .duration(duration)
-                .attrTween('r', function(d) {
-                    const getR = (diff) => diff > diffThreshold ? 2.05 : 1.5
-                    const i = d3.interpolate(getR(this._current), getR(d.diffFromBaseline))
-                    this._current =  d.diffFromBaseline
-                    return t => radius * i(t) + 2
-                })
-        )
-
-    container.selectAll("circle.node")
-        .data(nodes, d => d.id)
-        .join("circle")
-        .attr("class", "node")
-        .attr("cx", d => d.x)
-        .attr("cy", d => d.y)
-        .attr("r", radius)
-        .style("fill", d => d.isEvidence ? "black" : 
-            colorScheme === "prob" ? "white" : getFillColor(d.group))
-        .style("stroke", "white")
-        .style("stroke-width", "4px")
-        .on("click", updateMarkov)
-        
-    container.selectAll("text.node-title")
-        .data(nodes, (d) => d.id)
-        .join("text")
-        .attr("class", "node-title node")
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .attr("text-anchor", "middle")
-        .style("fill", d => d.isEvidence ? "white" : "black")
-        .style("font-size", "12px")
-        .style("font-weight", "bold")
-        .attr("dy", 10)
-        .text(d => d.title)
-    
-    // node groups
-    container.selectAll("text.node-group")
-        .data(nodes, (d) => d.id)
-        .join("text")
-        .attr("class", "node node-group")
-        .attr("x", d => d.x)
-        .attr("y", d => d.y)
-        .attr("text-anchor", "middle")
-        .style("fill", d => d.isEvidence ? "white" : "black")
-        .style("font-size", "10px")
-        .style("font-style", "italic")
-        .attr("dy", -5)
-        .text(d => d.group)
-        
-    //  --------- PIE CHART ELEMENT
-    const pie = d3.pie()
-        .value(d => d.value)
-        .sort(null);
-    const arcFunc = (start) => d3.arc()
-        .innerRadius(radius * start)
-        .outerRadius(radius * (start + 0.5))
-
-    // sendEvidence -- currently random propagation
-    // adds new evidence to existing evidence list
-    const sendEvidence = async({newEvidence}) => {
-        try {
-            // await response from backend
-            const newProbabilities = await propagateEvidence({evidence: newEvidence})
-
-            // update nodes with new probabilities
-            const newNodes = nodes.map(node => {
-                const isEvidence = Object.keys(newEvidence).includes(node.id)
-                // get "difference" metric
-                const baselineValues = nodesBase.find(n => n.id === node.id).values
-                const diffFromBaseline = baselineValues.map((v, i) => 
-                    Math.abs(v.value - newProbabilities[node.id][i].value))
-                    .reduce((acc, curr) => acc + curr, 0)
-
-                // plotting breaks if a label probability is nearly 1
-                let plottableProbs = newProbabilities[node.id]
-                if (plottableProbs.some(p => p.value > .999)) {
-                    plottableProbs.forEach(p => { p.value = p.value > .999 ? 1 : 0 })
-                }
-                
-                return {
-                    ...node,
-                    values: plottableProbs,
-                    isEvidence: isEvidence,
-                    diffFromBaseline: diffFromBaseline
-                }
+        // Updates Markov blanket for nodes
+        const updateMarkov = (event, d) => {
+            //if (!event.shiftKey) {return}
+            
+            getMarkov(d.id).then(response => {
+                if (!response) {return}
+                markovRef.current = {"id": d.id, "blanket": response}
+                render()
             })
-
-            // re-render with new nodes
-            render({nodes: newNodes, evidence: newEvidence, markov: markov})
-        } catch (error) {
-            alert('Error propagating evidence: ' + error.message)
         }
-    }
 
-    const pieContainer = container.selectAll('g.pie-node')
-        .data(nodes, d => d.id)
-        .join('g')
-        .attr('class', 'pie-node node')
-        .attr('transform', d => `translate(${d.x}, ${d.y})`)
+        // Links -- arrowhead distance updates
+        container.selectAll("path.link")
+            .data(linksBase, d => d.id)
+            .join(
+                enter => enter.append("path")
+                    .attr("class", "link")
+                    .attr("d", ({ points }) => line(points))
+                    .attr("stroke", "grey")
+                    .attr('fill', 'none')
+                    .attr("stroke-width", d => 4 * d.strength)
+                    .attr('marker-end', "url(#arrow_0)")
+                    .each(function(d) {this._current = 0}),
+                update => !evCompRef.current ? null : update // moving arrowheads
+                    .transition()
+                    .duration(duration)
+                    .attrTween('marker-end', function(d) {
+                        const isExpanded = nodes.find(n => n.id === d.target).diffFromBaseline ? 1 : 0
+                        const i = d3.interpolate(this._current * 24, isExpanded * 24)
+                        this._current = isExpanded
+                        return t => `url(#arrow_${Math.round(i(t))})`
+                    })
+            )
 
-    // COMPARISON RING
-    if (evCompRef.current) {
-        const thresholdIds = nodes.filter(node => node.diffFromBaseline > diffThreshold).map(n => n.id)
+        // white background circle for nodes (hides markov blanket)
+        container.selectAll("circle.background")
+            .data(nodes, d => d.id)
+            .join(
+                enter => enter.append("circle")
+                    .attr("class", "background")
+                    .each(function(d) {this._current = d.diffFromBaseline})
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y)
+                    .attr("r", radius * 1.5 + 2)
+                    .style("fill", "white"),
+                update => !evCompRef.current ? null : update.transition()
+                    .duration(duration)
+                    .attrTween('r', function(d) {
+                        const getR = (diff) => diff ? 2.05 : 1.5
+                        const i = d3.interpolate(getR(this._current), getR(d.diffFromBaseline))
+                        this._current =  d.diffFromBaseline
+                        return t => radius * i(t) + 2
+                    })
+            )
 
-        const outerPieContainer = container.selectAll('g.outer-pie')
-            .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
+        container.selectAll("circle.node")
+            .data(nodes, d => d.id)
+            .join("circle")
+            .attr("class", "node")
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y)
+            .attr("r", radius)
+            .style("fill", d => d.isEvidence ? "black" : 
+                colorScheme === "prob" ? "white" : getFillColor(d.group))
+            .style("stroke", "white")
+            .style("stroke-width", "4px")
+            .on("click", updateMarkov)
+            
+        container.selectAll("text.node-title")
+            .data(nodes, (d) => d.id)
+            .join("text")
+            .attr("class", "node-title node")
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .attr("text-anchor", "middle")
+            .style("fill", d => d.isEvidence ? "white" : "black")
+            .style("font-size", "12px")
+            .style("font-weight", "bold")
+            .attr("dy", 10)
+            .text(d => d.title)
+        
+        // node groups
+        container.selectAll("text.node-group")
+            .data(nodes, (d) => d.id)
+            .join("text")
+            .attr("class", "node node-group")
+            .attr("x", d => d.x)
+            .attr("y", d => d.y)
+            .attr("text-anchor", "middle")
+            .style("fill", d => d.isEvidence ? "white" : "black")
+            .style("font-size", "10px")
+            .style("font-style", "italic")
+            .attr("dy", -5)
+            .text(d => d.group)
+            
+        //  --------- PIE CHART ELEMENT
+        const pie = d3.pie()
+            .value(d => d.value)
+            .sort(null);
+        const arcFunc = (start) => d3.arc()
+            .innerRadius(radius * start)
+            .outerRadius(radius * (start + 0.5))
+
+        // Send evidence to backend and update nodes accordingly
+        const sendEvidence = async({newEvidence}) => {
+            try {
+                // await response from backend
+                const newProbabilities = await propagateEvidence({evidence: newEvidence})
+
+                // update nodes with new probabilities
+                const newNodes = nodes.map(node => {
+                    const isEvidence = Object.keys(newEvidence).includes(node.id)
+                    // get "difference" metric
+                    const diffFromBaseline = isSigDiff(node.id, newProbabilities[node.id])
+
+                    // plotting breaks if a label probability is nearly 1
+                    let plottableProbs = newProbabilities[node.id]
+                    if (plottableProbs.some(p => p.value > .999)) {
+                        plottableProbs.forEach(p => { p.value = p.value > .999 ? 1 : 0 })
+                    }
+                    
+                    return {
+                        ...node,
+                        values: plottableProbs,
+                        isEvidence: isEvidence,
+                        diffFromBaseline: diffFromBaseline
+                    }
+                })
+
+                // Update the new node information and evidence set and force redraw
+                nodesRef.current = newNodes
+                evidenceRef.current = newEvidence
+                render()
+            } catch (error) {
+                alert('Error propagating evidence: ' + error.message)
+            }
+        }
+
+        const pieContainer = container.selectAll('g.pie-node')
+            .data(nodes, d => d.id)
             .join('g')
-            .attr('class', 'outer-pie node')
+            .attr('class', 'pie-node node')
             .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
-        // rendering each node inner ring
-        nodesBase.forEach(node => {
+        // COMPARISON RING
+        if (evCompRef.current) {
+            const thresholdIds = nodes.filter(node => node.diffFromBaseline).map(n => n.id)
+
+            const outerPieContainer = container.selectAll('g.outer-pie')
+                .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
+                .join('g')
+                .attr('class', 'outer-pie node')
+                .attr('transform', d => `translate(${d.x}, ${d.y})`)
+
+            nodesBase.forEach(node => {
+                const arcs = pie(node.values)
+
+                const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+                    .data(arcs, d => d.index)
+
+                updatePies.enter() // new pie segments
+                    .append('path')
+                    .attr('d', arcFunc(1))
+                    .attr('class', 'node')
+                    .attr('fill', d => colorScale[d.data.label])
+                    .style('opacity', .5)
+                    .append('title')
+                        .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+            })
+        }
+        
+        // PRIMARY RING
+        nodes.forEach(node => {
             const arcs = pie(node.values)
 
-            const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+            const setEvidence = (event, d) => {
+                const newEvidence = {...evidence, [node.id]: d.data.label}
+
+                sendEvidence({newEvidence: newEvidence})
+            }
+
+            const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
                 .data(arcs, d => d.index)
 
             updatePies.enter() // new pie segments
@@ -383,81 +418,55 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 .attr('d', arcFunc(1))
                 .attr('class', 'node')
                 .attr('fill', d => colorScale[d.data.label])
-                .style('opacity', .5)
-                .append('title')
+                .each(function(d) { this._current = {data: d, diffFromBaseline: node.diffFromBaseline}})
+                .on('mouseover', (event, d) => {
+                    d3.select(event.target)
+                    .attr("fill", d3.color(colorScale[d.data.label]).darker(1))
+                })
+                .on('mouseout', (event, d) => {
+                    d3.select(event.target)
+                    .attr("fill", colorScale[d.data.label])
+                })
+                .on('click', setEvidence) // initial Propagate evidence
+                .append('title') // delay in showing title, nonfixable without custom tooltip
                     .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+        
+            updatePies
+                .on('click', setEvidence) // new propagate evidence to ensure updated nodes information   
+                .transition() // update existing pies
+                .duration(duration) 
+                .attrTween('d', function(d) {
+                    const i = d3.interpolate(this._current.data, d)
+                    const getR = (n) => evCompRef.current && n.diffFromBaseline ? 1.55 : 1
+                    const j = d3.interpolate(getR(this._current), getR(node))
+                    this._current = {data: i(0), diffFromBaseline: node.diffFromBaseline}
+                    return t => arcFunc(j(t))(i(t))
+                })
+                .attr('fill', d => colorScale[d.data.label])
+                .select('title')
+                    .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+
+            updatePies.exit().remove(); // remove old pie segments
         })
-    }
-    
-    // PRIMARY RING
-    nodes.forEach(node => {
-        const arcs = pie(node.values)
-
-        const setEvidence = (event, d) => {
-            const newEvidence = {...evidence, [node.id]: d.data.label}
-
-            sendEvidence({newEvidence: newEvidence})
-        }
-
-        const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
-            .data(arcs, d => d.index)
-
-        updatePies.enter() // new pie segments
-            .append('path')
-            .attr('d', arcFunc(1))
-            .attr('class', 'node')
-            .attr('fill', d => colorScale[d.data.label])
-            .each(function(d) { this._current = {data: d, diffFromBaseline: node.diffFromBaseline}})
-            .on('mouseover', (event, d) => {
-                d3.select(event.target)
-                .attr("fill", d3.color(colorScale[d.data.label]).darker(1))
-            })
-            .on('mouseout', (event, d) => {
-                d3.select(event.target)
-                .attr("fill", colorScale[d.data.label])
-            })
-            .on('click', setEvidence) // initial Propagate evidence
-            .append('title') // delay in rendering, nonfixable without original implementation
-                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
-    
-        updatePies
-            .on('click', setEvidence) // new propagate evidence to ensure updated nodes information   
-            .transition() // update existing pies
-            .duration(duration) 
-            .attrTween('d', function(d) {
-                const i = d3.interpolate(this._current.data, d)
-                const getR = (n) => evCompRef.current && (n.diffFromBaseline > diffThreshold) ? 1.55 : 1
-                const j = d3.interpolate(getR(this._current), getR(node))
-                this._current = {data: i(0), diffFromBaseline: node.diffFromBaseline}
-                return t => arcFunc(j(t))(i(t))
-            })
-            .attr('fill', d => colorScale[d.data.label])
-            .select('title')
-                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
-
-        updatePies.exit().remove(); // remove old pie segments
-    })
-
     } // end render()
 
-    // Initial render
-    render({nodes: nodesBase, evidence: {}, markov: {}})
-
+    // Event listener for enabling comparison rings
     useEffect(() => {
         const handleToggle = () => {
-            evCompRef.current = !evCompRef.current;
-        };
+            evCompRef.current = !evCompRef.current
+            render()
+        }
 
-        window.addEventListener('evCompToggle', handleToggle);
+        window.addEventListener('evCompToggle', handleToggle)
 
-        return () => {
-            window.removeEventListener('evCompToggle', handleToggle);
-        };
-    }, []);
+        return () => window.removeEventListener('evCompToggle', handleToggle)
+    }, [])
 
+    // Settings nodes base and initial render
     useEffect(() => {
-        console.log("evCompRef changed!")
-    }, [evCompRef])
+        nodesRef.current = nodesBase
+        render()
+    }, [nodesBase])
 
     // Appending to DOM
     useEffect(() => {
@@ -485,9 +494,7 @@ export default function BayesianNet() {
         'dagreLayout': lm.dagreLayoutCompound
     }
 
-    // testing retrieval from backend
-    // the backend shoulllddddddd be the one formatting the data into what we need
-    // but i'm gonna do it in the frontend for now
+    // Retrieve data from backend. parseNodes and parseLinks add additional rendering-specific information
     useEffect(() => {
         getNetwork().then(response => {
             setNodeStarter(parseNodes(response.nodes))
@@ -502,11 +509,11 @@ export default function BayesianNet() {
         <div>
             <h2> Propagated Bayesian Network </h2>
             <hr className = "pb-0"/>
-            <div className = "d-flex">
+            <div className = "d-flex align-items-center">
                 <div className = "inline-block pb-3 pe-4">
                     <label for = "layoutalg" className = "p-1">Select a layout algorithm: </label>
                     <br/>
-                    <select id = "#layoutalg" onChange = {(e) => setLayoutAlgorithm(e.target.value)}>
+                    <select id = "layoutalg" onChange = {(e) => setLayoutAlgorithm(e.target.value)}>
                         <option value = "sugiyama"> Sugiyama layout</option>
                         <option value = "moddedSugiyama"> Sugiyama-informed grouping</option>
                         <option value = "basicLayout"> Edge-ignorant grouping </option>
@@ -516,7 +523,7 @@ export default function BayesianNet() {
                 <div className = "inline-block pb-3 pe-4">
                     <label for = "colorscheme" className = "p-1">Select a color scheme: </label>
                     <br/>
-                    <select id = "#colorscheme" onChange = {(e) => setColorScheme(e.target.value)}>
+                    <select id = "colorscheme" onChange = {(e) => setColorScheme(e.target.value)}>
                         <option value = "prob"> Colorful Probabilities </option>
                         <option value = "group"> Colorful Groups </option>
                     </select>
