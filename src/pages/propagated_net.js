@@ -78,14 +78,21 @@ const NetLegend = ({cols}) => {
 // - importance algorithm
 // - toggleable evidence comparison mode
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
+    // used to append the SVG to the DOM
     const netRef = useRef()
-    const evCompRef = useRef(true) 
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 132
 
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
     const line = d3.line().curve(d3.curveMonotoneX)
+
+    // Initial references
+    const evCompRef = useRef(true) 
+    const nodesRef = useRef(nodesBase)
+    const linksRef = useRef(linksBase)
+    const evidenceRef = useRef({})
+    const markovRef = useRef({})
 
     // basic features of the graph
     const radius = nodeSize/3 // node size
@@ -447,6 +454,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             window.removeEventListener('evCompToggle', handleToggle);
         };
     }, []);
+
+    useEffect(() => {
+        console.log("evCompRef changed!")
+    }, [evCompRef])
 
     // Appending to DOM
     useEffect(() => {
