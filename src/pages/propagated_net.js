@@ -79,6 +79,7 @@ const NetLegend = ({cols}) => {
 // - toggleable evidence comparison mode
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const netRef = useRef()
+    const evCompRef = useRef(true) 
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 132
@@ -179,6 +180,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // Rendering function. allows nodes to be updated
     // --------------------------------------------------------------------------------
     const render = ({nodes, evidence, markov}) => {
+    console.log("New render, evcomp", evCompRef.current)
 
     const getMarkovFill = (id) => {
         if (!markov.id) {
@@ -200,7 +202,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("filter", "url(#glow)")
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
-        .attr("r", d => d.diffFromBaseline > diffThreshold ? radius * 2.3 : radius * 1.8)
+        .attr("r", d => evCompRef.current && (d.diffFromBaseline > diffThreshold) ? radius * 2.3 : radius * 1.8)
         .style("fill", "transparent")
         .transition()
             .duration(duration/5)
@@ -229,7 +231,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 .attr("stroke-width", d => 4 * d.strength)
                 .attr('marker-end', "url(#arrow_0)")
                 .each(function(d) {this._current = 0}),
-            update => update // moving arrowheads
+            update => !evCompRef.current ? null : update // moving arrowheads
                 .transition()
                 .duration(duration)
                 .attrTween('marker-end', function(d) {
@@ -251,7 +253,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 .attr("cy", d => d.y)
                 .attr("r", radius * 1.5 + 2)
                 .style("fill", "white"),
-            update => update.transition()
+            update => !evCompRef.current ? null : update.transition()
                 .duration(duration)
                 .attrTween('r', function(d) {
                     const getR = (diff) => diff > diffThreshold ? 2.05 : 1.5
@@ -353,30 +355,32 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
     // COMPARISON RING
-    const thresholdIds = nodes.filter(node => node.diffFromBaseline > diffThreshold).map(n => n.id)
+    if (evCompRef.current) {
+        const thresholdIds = nodes.filter(node => node.diffFromBaseline > diffThreshold).map(n => n.id)
 
-    const outerPieContainer = container.selectAll('g.outer-pie')
-        .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
-        .join('g')
-        .attr('class', 'outer-pie node')
-        .attr('transform', d => `translate(${d.x}, ${d.y})`)
+        const outerPieContainer = container.selectAll('g.outer-pie')
+            .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
+            .join('g')
+            .attr('class', 'outer-pie node')
+            .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
-    // rendering each node inner ring
-    nodesBase.forEach(node => {
-        const arcs = pie(node.values)
+        // rendering each node inner ring
+        nodesBase.forEach(node => {
+            const arcs = pie(node.values)
 
-        const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
-            .data(arcs, d => d.index)
+            const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+                .data(arcs, d => d.index)
 
-        updatePies.enter() // new pie segments
-            .append('path')
-            .attr('d', arcFunc(1))
-            .attr('class', 'node')
-            .attr('fill', d => colorScale[d.data.label])
-            .style('opacity', .5)
-            .append('title')
-                .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
-    })
+            updatePies.enter() // new pie segments
+                .append('path')
+                .attr('d', arcFunc(1))
+                .attr('class', 'node')
+                .attr('fill', d => colorScale[d.data.label])
+                .style('opacity', .5)
+                .append('title')
+                    .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+        })
+    }
     
     // PRIMARY RING
     nodes.forEach(node => {
@@ -415,7 +419,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .duration(duration) 
             .attrTween('d', function(d) {
                 const i = d3.interpolate(this._current.data, d)
-                const getR = (n) => n.diffFromBaseline > diffThreshold ? 1.55 : 1
+                const getR = (n) => evCompRef.current && (n.diffFromBaseline > diffThreshold) ? 1.55 : 1
                 const j = d3.interpolate(getR(this._current), getR(node))
                 this._current = {data: i(0), diffFromBaseline: node.diffFromBaseline}
                 return t => arcFunc(j(t))(i(t))
@@ -431,6 +435,18 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
     // Initial render
     render({nodes: nodesBase, evidence: {}, markov: {}})
+
+    useEffect(() => {
+        const handleToggle = () => {
+            evCompRef.current = !evCompRef.current;
+        };
+
+        window.addEventListener('evCompToggle', handleToggle);
+
+        return () => {
+            window.removeEventListener('evCompToggle', handleToggle);
+        };
+    }, []);
 
     // Appending to DOM
     useEffect(() => {
@@ -493,6 +509,16 @@ export default function BayesianNet() {
                         <option value = "prob"> Colorful Probabilities </option>
                         <option value = "group"> Colorful Groups </option>
                     </select>
+                </div>
+                <div className = "form-check form-switch">
+                    <input className = "form-check-input" type = "checkbox" id = "evcomptoggle"
+                        onChange = {() => 
+                            // sending an event that evComp has been toggled.
+                            window.dispatchEvent(new CustomEvent('evCompToggle'))
+                        }/>
+                    <label className = "form-check-label" for = "evcomptoggle">
+                        Show comparison rings?
+                    </label>
                 </div>
             </div>
             <PropagatedNet nodeStarter = {nodeStarter} links = {links} 
