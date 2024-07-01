@@ -7,20 +7,6 @@ import {scaleLinear} from 'd3-scale';
 const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
     'Oven', 'Cutting', 'Crumb', 'Bread']
 
-
-/* Old link code. 
-container.selectAll("line")
-.data(links, d => d.id)
-.enter()
-.append("line")
-.attr("x1", d => nodes.find(node => node.id === d.source).x) // finding x value of source
-.attr("y1", d => nodes.find(node => node.id === d.source).y)
-.attr("x2", d => nodes.find(node => node.id === d.target).x) // finding x value of target
-.attr("y2", d => nodes.find(node => node.id === d.target).y)
-.attr("stroke", "grey")
-.attr("stroke-width", d => 4 * d.strength)
-*/
-
 // Basic layout. Evenly spaces nodes within a group on y-layers. No edge crossing minimization.
 export const basicLayout = (nodes, links, nodeSize) => {
     const width = nodeSize * 12
@@ -55,6 +41,7 @@ export const basicLayout = (nodes, links, nodeSize) => {
 }
 
 // Dagre layout library. Supports subgraphs and edge crossing minimization. Rather spaced out. 
+// compound group setup
 export const dagreLayoutCompound = (nodes, links, nodeSize) => {
     const g = new dg.graphlib.Graph({compound: true}) 
 
@@ -113,6 +100,7 @@ export const dagreLayoutCompound = (nodes, links, nodeSize) => {
 }
 
 // Dagre layout library. Supports subgraphs and edge crossing minimization. Rather spaced out. 
+// single group setup for unaffiliated nodes
 export const dagreLayoutSingle = (nodes, links, nodeSize) => {
     const g = new dg.graphlib.Graph() 
 
@@ -202,10 +190,7 @@ export const sugiyamaLayout = (nodes, links, nodeSize) => {
     return {nodesBase, linksBase, width: layoutObj.height, height: layoutObj.width}
 }
 
-
-// Sugiyama layout library.
-// https://codepen.io/brinkbot/pen/oNQwNRv?editors=0010
-// https://erikbrinkman.github.io/d3-dag/
+// Sugiyama library with x position modified to reflect group hierarchy
 export const rankedSugiyama = (nodes, links, nodeSize) => {
     // creating graph object
     const builder = d3dag.graphStratify();

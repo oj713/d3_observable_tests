@@ -1,3 +1,5 @@
+// Parse nodes
+// fix long node titles, add rendering information
 export const parseNodes = (nodesRaw) => {
     const nodes = nodesRaw.map(node => {
         // remove first word of the title for nodes like DoughStickiness, ActivityFermentation, etc. To fit inside circle presentation.
@@ -22,6 +24,7 @@ export const parseNodes = (nodesRaw) => {
     return nodes
 }
 
+// Parses links by adding static "strength" component
 export const parseLinks = (linksRaw) => {
     const links = linksRaw.map(link => { return {
         ...link,

@@ -4,6 +4,7 @@ import {parseNodes, parseLinks} from '../BN_tools/network-parser.js'
 import * as lm from '../BN_tools/layout_methods.js'
 import * as d3 from 'd3'
 
+// Color scheme options for 'group' and 'prob'
 const probValues = {
     "low": "gainsboro", 
     "avg": "gray", 
@@ -15,10 +16,15 @@ const probCols = {
     "high": "#F15946"
 }
 
+/**
+ * Network Legend component. Displays static color scheme.
+ * @param cols color scheme to display
+ * @returns div containing svg of network legend
+ */
 const NetLegend = ({cols}) => {
     const legendRef = useRef()
 
-    // variables
+    // Variables to define
     const colorLegendScale = {
         "Excess/Elevated": cols.high,
         "Normal/Average": cols.avg,
@@ -33,6 +39,7 @@ const NetLegend = ({cols}) => {
         .attr("height", 2 * padding + 6 * radius)
         .style("border", "1px solid black")
 
+    // rectangular background
     legend.selectAll('rect')
         .data([1])
         .enter()
@@ -42,6 +49,7 @@ const NetLegend = ({cols}) => {
             .attr('fill', 'white')
             .attr('opacity', 0.8)
 
+    // circles for each color 
     legend.selectAll('circle')
         .data(Object.entries(colorLegendScale))
         .enter()
@@ -52,6 +60,8 @@ const NetLegend = ({cols}) => {
             .attr('transform', `translate(${padding}, ${padding})`)
             .attr('stroke', 'white')
             .attr('stroke-width', 1)
+    
+    // text for each color
     legend.selectAll('text')
         .data(Object.entries(colorLegendScale))
         .enter()
@@ -63,6 +73,7 @@ const NetLegend = ({cols}) => {
             .attr('font-size', radius * 1.3)
             .attr('transform', `translate(${padding}, ${padding})`)
 
+    // attaching to div
     useEffect(() => {
         legendRef.current.append(legend.node())
         return(() => legend.node().remove())
@@ -73,14 +84,23 @@ const NetLegend = ({cols}) => {
     )
 }
 
-// Prototype propagated network
-// Todo: 
-// - importance algorithm
+/**
+ * Propagated Network component. Creates and updates a Bayesian network with evidence propagation.
+ * Not implemented: 
+ *  - Resolving discrepancies between toggle and evCompRef
+ *  - smarter importance algorithm
+ * Note warning "React Hook useEffect has a missing dependency: 'render'". Currently no effect on performance, choosing to ignore. 
+ * @param nodeStarter the base nodes of the network (and probabilities)
+ * @param links the links between nodes
+ * @param layoutAlgorithm Layout algorithm ('Sugiyama', 'moddedSugiyama', 'basicLayout', 'dagreLayout')
+ * @param colorScheme color scheme ('prob', 'group')
+ * @returns a div containing Bayesian Network SVG
+ */
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // used to append the SVG to the DOM
     const netRef = useRef()
     // Refs for updating nodes, evidence, and markov blanket
-    const evCompRef = useRef(false) // starting off false
+    const evCompRef = useRef(false) 
     const nodesRef = useRef([])
     const evidenceRef = useRef({})
     const markovRef = useRef({})
@@ -90,8 +110,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
     const line = d3.line().curve(d3.curveMonotoneX)
 
-    // basic features of the graph
-    const radius = nodeSize/3 // node size
+    // Defining basic features of the graph
+    const radius = nodeSize/3
     const duration = 750 // ms, for animations
     // "Significant Difference" function for evidence propagation
     const getDiff = (id, newValues) => {
@@ -102,11 +122,12 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
         return diff
     }
+    // Whether a node is rendered as expanded
     const getIsExpanded = (diff) => {
         return evCompRef.current && (diff > .2)
     }
 
-    // color schemes dependent on selected color option
+    // Color schemes
     const cols = colorScheme === "prob" ? probCols : probValues
     const colorScale = {
         "insufficient": cols.low,
@@ -123,7 +144,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         "target": colorScheme === "prob" ? "#0f5c28" : "#161694",
         "blanket": colorScheme === "prob" ? "#76d13d" : "#904fc2"
     }
-
     const colors = d3.scaleOrdinal(d3.schemeSet3)
     const getFillColor = (group) => {
         const groupHierarchy = ['Kneading', 'Pointing', 'Shaping', 'Priming', 
@@ -152,7 +172,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const container = svg.append("g")
         .attr("class", "board")
 
-    // Arrowheads: defining 25 for interpolation
+    // Arrowheads: defining 25 for animation interpolation
     const ahI = d3.interpolate(9, radius * .35 + 9)
     const arrowHeadDefData = [...new Array(25).keys()].map(i => {
         return {refX: ahI(i * 4/100), id: i}
@@ -172,7 +192,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr("fill", "grey")
             .attr("d", 'M0,-5L10,0L0,5')
 
-    // Glowing effect
+    // Glowing effect for Markov Blankets
     defs.selectAll('filter')
         .data(['glow'])
         .join('filter')
@@ -186,7 +206,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .append('feMergeNode')
             .attr("in","SourceGraphic")
 
-    // zooming
+    // Zooming for all SVG elements
     svg.call(d3.zoom()
         .extent([[0, 0], [width, height]])
         .scaleExtent([1, 8])
@@ -194,16 +214,19 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             container.attr("transform", event.transform)
         }))
 
-    // Rendering function, renders dynamic features of the graph
-    // - Markov glow behind nodes
-    // - Links with arrowheads
-    // - Nodes: background, central information, evidence ring, comparison ring
-    // --------------------------------------------------------------------------------
+    /**
+     * Render function for the network. 
+     *  - Markov glow behind nodes + updating Markov blanket
+     *  - Links between nodes with animated arrowheads
+     *  - Nodes: background, central information, evidence ring, comparison ring
+     *  - Evidence propagation
+     */
     const render = () => {
         const nodes = nodesRef.current
         const evidence = evidenceRef.current
         const markov = markovRef.current
 
+        // Markov glow
         const getMarkovFill = (id) => {
             if (!markov.id) {
                 return "transparent"
@@ -215,8 +238,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 return "transparent"
             }
         }
-
-        // Markov glow
         container.selectAll("circle.markovGlow")
             .data(nodes, d => d.id)
             .join("circle")
@@ -241,7 +262,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             })
         }
 
-        // Links -- arrowhead distance updates
+        // Links -- arrowhead position animates depending on target node expansion
         container.selectAll("path.link")
             .data(linksBase, d => d.id)
             .join(
@@ -264,7 +285,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                     })
             )
 
-        // white background circle for nodes (hides markov blanket)
+        // White background circle for nodes (hides markov blanket)
         container.selectAll("circle.background")
             .data(nodes, d => d.id)
             .join(
@@ -275,7 +296,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                     .attr("cy", d => d.y)
                     .attr("r", radius * 1.5 + 2)
                     .style("fill", "white"),
-                update => update.transition() //!evCompRef.current ? null : 
+                update => update.transition() // Animates w/ node expansion
                     .duration(duration)
                     .attrTween('r', function(d) {
                         const getR = (exp) => exp ? 2.05 : 1.5
@@ -285,7 +306,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                     })
             )
 
-        container.selectAll("circle.node")
+        // Static central node information
+        container.selectAll("circle.node") // center circle
             .data(nodes, d => d.id)
             .join("circle")
             .attr("class", "node")
@@ -297,8 +319,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .style("stroke", "white")
             .style("stroke-width", "4px")
             .on("click", updateMarkov)
-            
-        container.selectAll("text.node-title")
+        container.selectAll("text.node-title") // center text, title
             .data(nodes, (d) => d.id)
             .join("text")
             .attr("class", "node-title node")
@@ -310,9 +331,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .style("font-weight", "bold")
             .attr("dy", 10)
             .text(d => d.title)
-        
-        // node groups
-        container.selectAll("text.node-group")
+        container.selectAll("text.node-group") // center text, group
             .data(nodes, (d) => d.id)
             .join("text")
             .attr("class", "node node-group")
@@ -325,7 +344,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr("dy", -5)
             .text(d => d.group)
             
-        //  --------- PIE CHART ELEMENT
+        // -------------------- PROBABILITY RINGS
         const pie = d3.pie()
             .value(d => d.value)
             .sort(null);
@@ -333,7 +352,11 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .innerRadius(radius * start)
             .outerRadius(radius * (start + 0.5))
 
-        // Send evidence to backend and update nodes accordingly
+        /**
+         * Send evidence to backend and update nodes with new probabilities.
+         * Recursively calls render() to update the network with new evidence.
+         * @param newEvidence evidence set for propagation 
+         */
         const sendEvidence = async({newEvidence}) => {
             try {
                 // await response from backend
@@ -370,13 +393,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             }
         }
 
-        const pieContainer = container.selectAll('g.pie-node')
-            .data(nodes, d => d.id)
-            .join('g')
-            .attr('class', 'pie-node node')
-            .attr('transform', d => `translate(${d.x}, ${d.y})`)
-
         // COMPARISON RING
+        // baseline probabilities of node at 50% opacity
+        // only renders if we are in comparison mode & node is expanded
         const thresholdIds = nodes.filter(node => node.isExpanded).map(n => n.id)
 
         const outerPieContainer = container.selectAll('g.outer-pie')
@@ -402,15 +421,25 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         })
         
         // PRIMARY RING
+        // current probabilities of node
+        // renders at all times -- expands, contracts, and updates via animation
+        const pieContainer = container.selectAll('g.pie-node')
+            .data(nodes, d => d.id)
+            .join('g')
+            .attr('class', 'pie-node node')
+            .attr('transform', d => `translate(${d.x}, ${d.y})`)
+
         nodes.forEach(node => {
             const arcs = pie(node.values)
 
+            // formatting evidence and sending to sendEvidence
             const setEvidence = (event, d) => {
                 const newEvidence = {...evidence, [node.id]: d.data.label}
 
                 sendEvidence({newEvidence: newEvidence})
             }
 
+            // update pie segments, arcs data manipulated to force rerender w/ isExpanded change
             const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
                 .data(arcs.map(a => {return {...a, isExpanded: node.isExpanded}}), d => d.index)
 
@@ -432,13 +461,15 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 .append('title') // delay in showing title, nonfixable without custom tooltip
                     .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
         
-            updatePies
+            updatePies // update existing pies
                 .on('click', setEvidence) // new propagate evidence to ensure updated nodes information   
-                .transition() // update existing pies
+                .transition() 
                 .duration(duration) 
                 .attrTween('d', function(d) {
+                    // interpolate between current and new probabilities
                     const i = d3.interpolate(this._current, d)
                     const getR = (n) => n.isExpanded ? 1.55 : 1
+                    // interpolate between current and new radii
                     const j = d3.interpolate(getR(this._current), getR(node))
                     this._current = i(0)
 
@@ -454,7 +485,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
     // Start the animation
     useEffect(() => {
-        // handle toggle logic
+        // Define toggle logic for comparison mode
         const handleToggle = () => {
             evCompRef.current = !evCompRef.current
             nodesRef.current = nodesRef.current.map(node => {
@@ -484,6 +515,10 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     )
 }
 
+/**
+ * Draws page and option toggles
+ * @returns BayesianNet component
+ */
 export default function BayesianNet() {
     const [nodeStarter, setNodeStarter] = useState([])
     const [links, setLinks] = useState([])

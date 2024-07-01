@@ -1,8 +1,4 @@
 import './App.css';
-// backend
-import {Provider} from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
-import networkReducer from './redux_stuff/network-reducer.js';
 // frontend
 import {BrowserRouter} from 'react-router-dom';
 import {Routes, Route} from 'react-router';
@@ -14,13 +10,8 @@ import NodeTests from './pages/nodeTests.js';
 import BayesianNet from './pages/bayesian_net.js';
 import PropagatedNet from './pages/propagated_net.js';
 
-const store = configureStore({
-  reducer: {network: networkReducer}
-})
-
 function App() {
   return (
-    <Provider store = {store}>
       <BrowserRouter>
         <div className="App container-fluid">
           <NavSidebar/>
@@ -36,7 +27,6 @@ function App() {
           </div>
         </div>
       </BrowserRouter>
-    </Provider>
   );
 }
 
