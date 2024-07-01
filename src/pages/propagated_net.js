@@ -76,7 +76,6 @@ const NetLegend = ({cols}) => {
 // Prototype propagated network
 // Todo: 
 // - importance algorithm
-// - toggleable evidence comparison mode
 const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     // used to append the SVG to the DOM
     const netRef = useRef()
@@ -88,7 +87,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
 
     // Layout computation. Replace for different layouts.
     const nodeSize = 132
-
     const {nodesBase, linksBase, width, height} = layoutAlgorithm(nodeStarter, links, nodeSize + 6)
     const line = d3.line().curve(d3.curveMonotoneX)
 
@@ -144,13 +142,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("border", "1px solid black")
         .on('click', (event) => {
             if (!d3.select(event.target).classed('node')) {
-                //nodesRef.current = nodesBase
-                //evidenceRef.current = {}
-                //markovRef.current = {}
-                evCompRef.current = !evCompRef.current
-                nodesRef.current = nodesRef.current.map(node => {
-                    return {...node, isExpanded: getIsExpanded(node.diffFromBaseline)}
-                })
+                nodesRef.current = nodesBase
+                evidenceRef.current = {}
+                markovRef.current = {}
                 render()
             }
         })
@@ -209,12 +203,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         const nodes = nodesRef.current
         const evidence = evidenceRef.current
         const markov = markovRef.current
-        // remove later
-        nodes.forEach(n => {
-            if (n.title === "Hydration") {
-                console.log("New render call, hydration: ", n.isExpanded) // TRUE HERE
-            }
-        })
 
         const getMarkovFill = (id) => {
             if (!markov.id) {
@@ -321,7 +309,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .style("font-size", "12px")
             .style("font-weight", "bold")
             .attr("dy", 10)
-            .text(d => d.isExpanded) //d.title)
+            .text(d => d.title)
         
         // node groups
         container.selectAll("text.node-group")
@@ -416,10 +404,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         // PRIMARY RING
         nodes.forEach(node => {
             const arcs = pie(node.values)
-            if (node.title === "Hydration") {
-                console.log("hydration arcs:" , arcs)
-                console.log(arcs.map(a => {return {...a, isExpanded: node.isExpanded}}))
-            }
 
             const setEvidence = (event, d) => {
                 const newEvidence = {...evidence, [node.id]: d.data.label}
@@ -456,10 +440,6 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                     const i = d3.interpolate(this._current, d)
                     const getR = (n) => n.isExpanded ? 1.55 : 1
                     const j = d3.interpolate(getR(this._current), getR(node))
-                    if (node.title === "Hydration") {
-                        console.log("Hydration: ", getR(this._current), "->" , getR(node))
-                    }
-
                     this._current = i(0)
 
                     return t => arcFunc(j(t))(i(t))
@@ -472,8 +452,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         })
     } // end render()
 
-    // Event listener for enabling comparison rings
+    // Start the animation
     useEffect(() => {
+        // handle toggle logic
         const handleToggle = () => {
             evCompRef.current = !evCompRef.current
             nodesRef.current = nodesRef.current.map(node => {
@@ -481,16 +462,13 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             })
             render()
         }
-
         window.addEventListener('evCompToggle', handleToggle)
 
-        return () => window.removeEventListener('evCompToggle', handleToggle)
-    }, [])
-
-    // Settings nodes base and initial render
-    useEffect(() => {
+        // set NodesBase and trigger initial render
         nodesRef.current = nodesBase
         render()
+
+        return () => window.removeEventListener('evCompToggle', handleToggle)
     }, [nodesBase])
 
     // Appending to DOM
