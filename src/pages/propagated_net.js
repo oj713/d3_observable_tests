@@ -96,13 +96,16 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     const radius = nodeSize/3 // node size
     const duration = 750 // ms, for animations
     // "Significant Difference" function for evidence propagation
-    const isSigDiff = (id, newValues) => {
+    const getDiff = (id, newValues) => {
         const baselineValues = nodesBase.find(n => n.id === id).values
         const diff = baselineValues.map((v, i) => 
             Math.abs(v.value - newValues[i].value))
             .reduce((acc, curr) => acc + curr, 0)
 
-        return diff > .2 // "difference threshold"
+        return diff
+    }
+    const getIsExpanded = (diff) => {
+        return evCompRef.current && (diff > .2)
     }
 
     // color schemes dependent on selected color option
@@ -141,9 +144,13 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         .style("border", "1px solid black")
         .on('click', (event) => {
             if (!d3.select(event.target).classed('node')) {
-                nodesRef.current = nodesBase
-                evidenceRef.current = {}
-                markovRef.current = {}
+                //nodesRef.current = nodesBase
+                //evidenceRef.current = {}
+                //markovRef.current = {}
+                evCompRef.current = !evCompRef.current
+                nodesRef.current = nodesRef.current.map(node => {
+                    return {...node, isExpanded: getIsExpanded(node.diffFromBaseline)}
+                })
                 render()
             }
         })
@@ -202,6 +209,12 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
         const nodes = nodesRef.current
         const evidence = evidenceRef.current
         const markov = markovRef.current
+        // remove later
+        nodes.forEach(n => {
+            if (n.title === "Hydration") {
+                console.log("New render call, hydration: ", n.isExpanded) // TRUE HERE
+            }
+        })
 
         const getMarkovFill = (id) => {
             if (!markov.id) {
@@ -223,7 +236,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .style("filter", "url(#glow)")
             .attr("cx", d => d.x)
             .attr("cy", d => d.y)
-            .attr("r", d => evCompRef.current && d.diffFromBaseline ? radius * 2.3 : radius * 1.8)
+            .attr("r", d => d.isExpanded ? radius * 2.3 : radius * 1.8)
             .style("fill", "transparent")
             .transition()
                 .duration(duration/5)
@@ -252,13 +265,13 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                     .attr("stroke-width", d => 4 * d.strength)
                     .attr('marker-end', "url(#arrow_0)")
                     .each(function(d) {this._current = 0}),
-                update => !evCompRef.current ? null : update // moving arrowheads
+                update => update // moving arrowheads
                     .transition()
                     .duration(duration)
                     .attrTween('marker-end', function(d) {
-                        const isExpanded = nodes.find(n => n.id === d.target).diffFromBaseline ? 1 : 0
-                        const i = d3.interpolate(this._current * 24, isExpanded * 24)
-                        this._current = isExpanded
+                        const isTargetExpanded = nodes.find(n => n.id === d.target).isExpanded ? 1 : 0
+                        const i = d3.interpolate(this._current * 24, isTargetExpanded * 24)
+                        this._current = isTargetExpanded
                         return t => `url(#arrow_${Math.round(i(t))})`
                     })
             )
@@ -269,17 +282,17 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .join(
                 enter => enter.append("circle")
                     .attr("class", "background")
-                    .each(function(d) {this._current = d.diffFromBaseline})
+                    .each(function(d) {this._current = d.isExpanded})
                     .attr("cx", d => d.x)
                     .attr("cy", d => d.y)
                     .attr("r", radius * 1.5 + 2)
                     .style("fill", "white"),
-                update => !evCompRef.current ? null : update.transition()
+                update => update.transition() //!evCompRef.current ? null : 
                     .duration(duration)
                     .attrTween('r', function(d) {
-                        const getR = (diff) => diff ? 2.05 : 1.5
-                        const i = d3.interpolate(getR(this._current), getR(d.diffFromBaseline))
-                        this._current =  d.diffFromBaseline
+                        const getR = (exp) => exp ? 2.05 : 1.5
+                        const i = d3.interpolate(getR(this._current), getR(d.isExpanded))
+                        this._current =  d.isExpanded
                         return t => radius * i(t) + 2
                     })
             )
@@ -308,7 +321,7 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .style("font-size", "12px")
             .style("font-weight", "bold")
             .attr("dy", 10)
-            .text(d => d.title)
+            .text(d => d.isExpanded) //d.title)
         
         // node groups
         container.selectAll("text.node-group")
@@ -342,7 +355,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 const newNodes = nodes.map(node => {
                     const isEvidence = Object.keys(newEvidence).includes(node.id)
                     // get "difference" metric
-                    const diffFromBaseline = isSigDiff(node.id, newProbabilities[node.id])
+                    const diffFromBaseline = getDiff(node.id, newProbabilities[node.id])
+                    const isExpanded = getIsExpanded(diffFromBaseline)
 
                     // plotting breaks if a label probability is nearly 1
                     let plottableProbs = newProbabilities[node.id]
@@ -354,7 +368,8 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                         ...node,
                         values: plottableProbs,
                         isEvidence: isEvidence,
-                        diffFromBaseline: diffFromBaseline
+                        diffFromBaseline: diffFromBaseline,
+                        isExpanded: isExpanded
                     }
                 })
 
@@ -374,35 +389,37 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
         // COMPARISON RING
-        if (evCompRef.current) {
-            const thresholdIds = nodes.filter(node => node.diffFromBaseline).map(n => n.id)
+        const thresholdIds = nodes.filter(node => node.isExpanded).map(n => n.id)
 
-            const outerPieContainer = container.selectAll('g.outer-pie')
-                .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
-                .join('g')
-                .attr('class', 'outer-pie node')
-                .attr('transform', d => `translate(${d.x}, ${d.y})`)
+        const outerPieContainer = container.selectAll('g.outer-pie')
+            .data(nodesBase.filter(node => thresholdIds.includes(node.id)), d => d.id)
+            .join('g')
+            .attr('class', 'outer-pie node')
+            .attr('transform', d => `translate(${d.x}, ${d.y})`)
 
-            nodesBase.forEach(node => {
-                const arcs = pie(node.values)
+        nodesBase.forEach(node => {
+            const arcs = pie(node.values)
 
-                const updatePies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
-                    .data(arcs, d => d.index)
+            const updateCompPies = outerPieContainer.filter(d => d.id === node.id).selectAll('path')
+                .data(arcs, d => d.index)
 
-                updatePies.enter() // new pie segments
-                    .append('path')
-                    .attr('d', arcFunc(1))
-                    .attr('class', 'node')
-                    .attr('fill', d => colorScale[d.data.label])
-                    .style('opacity', .5)
-                    .append('title')
-                        .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
-            })
-        }
+            updateCompPies.enter() // new pie segments
+                .append('path')
+                .attr('d', arcFunc(1))
+                .attr('class', 'node')
+                .attr('fill', d => colorScale[d.data.label])
+                .style('opacity', .5)
+                .append('title')
+                    .text(d => `${d.data.label}: ${Math.round(d.data.value * 100)}%`)
+        })
         
         // PRIMARY RING
         nodes.forEach(node => {
             const arcs = pie(node.values)
+            if (node.title === "Hydration") {
+                console.log("hydration arcs:" , arcs)
+                console.log(arcs.map(a => {return {...a, isExpanded: node.isExpanded}}))
+            }
 
             const setEvidence = (event, d) => {
                 const newEvidence = {...evidence, [node.id]: d.data.label}
@@ -411,14 +428,14 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
             }
 
             const updatePies = pieContainer.filter(d => d.id === node.id).selectAll('path')
-                .data(arcs, d => d.index)
+                .data(arcs.map(a => {return {...a, isExpanded: node.isExpanded}}), d => d.index)
 
             updatePies.enter() // new pie segments
                 .append('path')
                 .attr('d', arcFunc(1))
                 .attr('class', 'node')
                 .attr('fill', d => colorScale[d.data.label])
-                .each(function(d) { this._current = {data: d, diffFromBaseline: node.diffFromBaseline}})
+                .each(function(d) { this._current = d})
                 .on('mouseover', (event, d) => {
                     d3.select(event.target)
                     .attr("fill", d3.color(colorScale[d.data.label]).darker(1))
@@ -436,10 +453,15 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
                 .transition() // update existing pies
                 .duration(duration) 
                 .attrTween('d', function(d) {
-                    const i = d3.interpolate(this._current.data, d)
-                    const getR = (n) => evCompRef.current && n.diffFromBaseline ? 1.55 : 1
+                    const i = d3.interpolate(this._current, d)
+                    const getR = (n) => n.isExpanded ? 1.55 : 1
                     const j = d3.interpolate(getR(this._current), getR(node))
-                    this._current = {data: i(0), diffFromBaseline: node.diffFromBaseline}
+                    if (node.title === "Hydration") {
+                        console.log("Hydration: ", getR(this._current), "->" , getR(node))
+                    }
+
+                    this._current = i(0)
+
                     return t => arcFunc(j(t))(i(t))
                 })
                 .attr('fill', d => colorScale[d.data.label])
@@ -454,6 +476,9 @@ const PropagatedNet = ({nodeStarter, links, layoutAlgorithm, colorScheme}) => {
     useEffect(() => {
         const handleToggle = () => {
             evCompRef.current = !evCompRef.current
+            nodesRef.current = nodesRef.current.map(node => {
+                return {...node, isExpanded: getIsExpanded(node.diffFromBaseline)}
+            })
             render()
         }
 

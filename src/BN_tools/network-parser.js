@@ -13,8 +13,9 @@ export const parseNodes = (nodesRaw) => {
             group: node.group === "PlaceInOven" ? "Oven" : node.group,
             x: 0,
             y: 0,
-            isEvidence: false,
-            diffFromBaseline: 0
+            isEvidence: false, // is this node an evidence node?
+            diffFromBaseline: 0, // statistic of change
+            isExpanded: false // is this node rendered as expanded?
         }
     })
 
