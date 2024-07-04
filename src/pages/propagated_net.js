@@ -547,7 +547,7 @@ export default function BayesianNet() {
         <div>
             <h2> Propagated Bayesian Network </h2>
             <hr className = "pb-0"/>
-            <div className = "d-flex align-items-center">
+            <div className = "d-flex flex-nowrap overflow-auto align-items-center">
                 <div className = "inline-block pb-3 pe-4">
                     <label for = "layoutalg" className = "p-1">Select a layout algorithm: </label>
                     <br/>

@@ -14,8 +14,8 @@ function App() {
   return (
       <BrowserRouter>
         <div className="App container-fluid">
-          <NavSidebar/>
-          <div className="bump-collapsed">
+          {/* <NavSidebar/> */}
+          <div> {/* className="bump-collapsed" */}
             <Routes>
               <Route path="/" element={<PropagatedNet/>} />
               <Route path="/general" element={<GeneralPage/>} />

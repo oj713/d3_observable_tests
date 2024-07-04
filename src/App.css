@@ -1,15 +1,7 @@
 .App {
   font-family: 'Lato';
   font-weight: 400;
-}
-
-.App > div {
-  padding: 20px;
-}
-
-div.nopad {
-  padding: 0;
-
+  padding-top: 10px;
 }
 
 h1, h2, h3 {
